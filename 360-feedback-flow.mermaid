@@ -1,0 +1,56 @@
+flowchart TB
+    subgraph Employee["👤 Employee Flow"]
+        E1[Start Review Cycle] --> E2[Add Reviewers<br/>3-6 people]
+        E2 --> E3[For Each Reviewer<br/>Capture Details]
+        E3 --> E4["• Name<br/>• Relationship Type<br/>• Collaboration Frequency"]
+        E4 --> E5[Generate Review<br/>Request Links]
+        E5 --> E6[Share Links<br/>with Reviewers]
+    end
+
+    subgraph Reviewer["✍️ Reviewer Flow"]
+        R1[Open Review<br/>Request Link] --> R2[View Employee<br/>Context]
+        R2 --> R3[Complete Feedback Form]
+        R3 --> R4["Structured Input:<br/>• Start Doing<br/>• Stop Doing<br/>• Continue Doing"]
+        R4 --> R5["Example Prompt:<br/>'Describe a moment<br/>you observed...'"]
+        R5 --> R6[Optional:<br/>Additional Comments]
+        R6 --> R7[Submit Feedback]
+    end
+
+    subgraph System["⚙️ System Processing"]
+        S1{2+ Reviews<br/>Submitted?}
+        S1 -->|No| S2[Wait for<br/>More Reviews]
+        S1 -->|Yes| S3[Generate Weighted<br/>Summary]
+        S3 --> S4[Apply Weightings]
+        S4 --> S5["Relationship Weight:<br/>Manager > Peer ><br/>Direct Report > XFN"]
+        S4 --> S6["Frequency Weight:<br/>Weekly > Monthly ><br/>Rarely"]
+        S5 --> S7[Combine into<br/>Final Summary]
+        S6 --> S7
+        S7 --> S8["Output Sections:<br/>• Strengths<br/>• Growth Areas<br/>• Key Examples<br/>• Suggested Focus"]
+        S8 --> S9[Include Weighting<br/>Explanation]
+    end
+
+    subgraph Manager["📊 Manager Dashboard"]
+        M1[View Review<br/>Cycle Progress] --> M2[See Reviewer List<br/>+ Status]
+        M2 --> M3["Status per Reviewer:<br/>• Pending<br/>• Submitted"]
+        M3 --> M4[Open Auto-Generated<br/>Summary]
+        M4 --> M5[Edit Summary<br/>if needed]
+        M5 --> M6[Click Finalise]
+        M6 --> M7[Summary Locked<br/>+ Final View]
+    end
+
+    %% Cross-flow connections
+    E6 -.->|"Link sent"| R1
+    R7 -.->|"Feedback stored"| S1
+    S2 -.->|"Waiting"| R7
+    S9 -.->|"Summary ready"| M4
+
+    %% Styling - dark text on light backgrounds
+    classDef employee fill:#e1f5fe,stroke:#01579b,color:#01579b
+    classDef reviewer fill:#f3e5f5,stroke:#4a148c,color:#4a148c
+    classDef system fill:#fff3e0,stroke:#e65100,color:#e65100
+    classDef manager fill:#e8f5e9,stroke:#1b5e20,color:#1b5e20
+    
+    class E1,E2,E3,E4,E5,E6 employee
+    class R1,R2,R3,R4,R5,R6,R7 reviewer
+    class S1,S2,S3,S4,S5,S6,S7,S8,S9 system
+    class M1,M2,M3,M4,M5,M6,M7 manager
