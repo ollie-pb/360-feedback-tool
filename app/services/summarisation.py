@@ -106,7 +106,7 @@ Keep the tone constructive and actionable. Be concise. Use markdown formatting.
     client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
     message = client.messages.create(
-        model="claude-sonnet-4-5-20250514",
+        model="claude-sonnet-4-20250514",
         max_tokens=2048,
         messages=[{"role": "user", "content": prompt}]
     )
