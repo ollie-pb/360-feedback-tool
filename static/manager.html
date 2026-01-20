@@ -52,14 +52,23 @@
             <div id="summary-section" class="hidden">
                 <h3>AI-Generated Summary</h3>
 
+                <div class="message info" id="workflow-steps">
+                    <strong>Next Steps:</strong>
+                    <ol style="margin: 5px 0 0 0; padding-left: 20px;">
+                        <li>Review the AI-generated summary below</li>
+                        <li>Edit if needed to add context or clarify points</li>
+                        <li>When satisfied, click "Finalise" to lock and share with the employee</li>
+                    </ol>
+                </div>
+
                 <div id="summary-view">
                     <div id="summary-content" class="summary-content"></div>
                     <div id="weighting-explanation" class="weighting-explanation"></div>
 
                     <div class="actions" id="view-actions">
-                        <button id="edit-btn">Edit Summary</button>
-                        <button id="regenerate-btn" class="secondary">Regenerate Summary</button>
-                        <button id="finalise-btn" class="danger">Finalise Summary</button>
+                        <button id="finalise-btn">Finalise & Share Summary</button>
+                        <button id="edit-btn" class="secondary">Edit Summary</button>
+                        <button id="regenerate-btn" class="secondary">Regenerate with AI</button>
                     </div>
                 </div>
 
@@ -81,7 +90,7 @@
 
     <script src="/static/js/app.js"></script>
     <script>
-        const employeeId = getPathParam(1); // /manager/{employee_id}
+        const employeeIdentifierentifier = getPathParam(1); // /manager/{employee_identifier} (name or ID)
         let currentSummary = null;
         let isFinalised = false;
 
@@ -91,7 +100,7 @@
             const errorEl = document.getElementById('error');
 
             try {
-                const data = await apiFetch(`/manager/${employeeId}`);
+                const data = await apiFetch(`/manager/${employeeIdentifier}`);
 
                 loadingEl.classList.add('hidden');
                 dashboardEl.classList.remove('hidden');
@@ -156,7 +165,7 @@
             saveBtn.textContent = 'Saving...';
 
             try {
-                const updated = await apiFetch(`/manager/${employeeId}/summary`, {
+                const updated = await apiFetch(`/manager/${employeeIdentifier}/summary`, {
                     method: 'PUT',
                     body: { content }
                 });
@@ -186,7 +195,7 @@
             btn.textContent = 'Generating...';
 
             try {
-                const updated = await apiFetch(`/manager/${employeeId}/regenerate`, {
+                const updated = await apiFetch(`/manager/${employeeIdentifier}/regenerate`, {
                     method: 'POST'
                 });
 
@@ -205,7 +214,8 @@
 
         // Finalise
         document.getElementById('finalise-btn').addEventListener('click', async () => {
-            if (!confirm('Once finalised, the summary cannot be edited or regenerated. Continue?')) {
+            const employeeName = document.getElementById('employee-name').textContent;
+            if (!confirm(`Are you ready to finalise this summary for ${employeeName}?\n\nAfter finalising:\n✓ The summary will be locked (no more edits)\n✓ You can share it with the employee\n✗ You cannot regenerate or edit it\n\nContinue?`)) {
                 return;
             }
 
@@ -214,7 +224,7 @@
             btn.textContent = 'Finalising...';
 
             try {
-                const updated = await apiFetch(`/manager/${employeeId}/finalise`, {
+                const updated = await apiFetch(`/manager/${employeeIdentifier}/finalise`, {
                     method: 'POST'
                 });
 
@@ -238,7 +248,7 @@
             btn.textContent = 'Generating...';
 
             try {
-                const updated = await apiFetch(`/manager/${employeeId}/generate`, {
+                const updated = await apiFetch(`/manager/${employeeIdentifier}/generate`, {
                     method: 'POST'
                 });
 
