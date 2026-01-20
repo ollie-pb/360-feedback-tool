@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nominate Reviewers - 360 Feedback</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <nav>
+        <a href="/">← Back to Home</a>
+    </nav>
+
+    <div class="container">
+        <h1>Start Feedback Cycle</h1>
+        <p>Enter your details and nominate 3-6 reviewers for your 360 feedback cycle.</p>
+
+        <form id="nominate-form">
+            <h2>Your Information</h2>
+            <div class="form-group">
+                <label for="employee-name">Your Name</label>
+                <input type="text" id="employee-name" required placeholder="Alex Chen">
+            </div>
+            <div class="form-group">
+                <label for="employee-email">Your Email</label>
+                <input type="email" id="employee-email" required placeholder="alex.chen@company.com">
+            </div>
+
+            <h2>Reviewers</h2>
+            <p>Add 3-6 people who will provide feedback. Include your manager, peers, and direct reports for a complete picture.</p>
+
+            <div id="reviewers-list">
+                <!-- Reviewer rows will be added here -->
+            </div>
+
+            <button type="button" id="add-reviewer" class="secondary">+ Add Reviewer</button>
+
+            <div class="actions">
+                <button type="submit" id="submit-btn">Create Feedback Cycle</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="container hidden" id="success-container">
+        <h1>Feedback Cycle Created!</h1>
+        <p>Share these unique links with your reviewers. Each link can only be used once.</p>
+
+        <div id="reviewer-links"></div>
+
+        <div class="actions">
+            <a href="/"><button class="secondary">Back to Home</button></a>
+            <a href="" id="manager-link"><button>View Manager Dashboard</button></a>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+    <script>
+        let reviewerCount = 0;
+        const reviewersList = document.getElementById('reviewers-list');
+        const form = document.getElementById('nominate-form');
+        const successContainer = document.getElementById('success-container');
+
+        function addReviewerRow() {
+            if (reviewerCount >= 6) {
+                alert('Maximum 6 reviewers allowed');
+                return;
+            }
+
+            reviewerCount++;
+            const row = document.createElement('div');
+            row.className = 'reviewer-row';
+            row.id = `reviewer-${reviewerCount}`;
+            row.innerHTML = `
+                <div>
+                    <label>Name</label>
+                    <input type="text" name="reviewer-name-${reviewerCount}" required placeholder="Sam Taylor">
+                </div>
+                <div>
+                    <label>Email</label>
+                    <input type="email" name="reviewer-email-${reviewerCount}" required placeholder="sam.taylor@company.com">
+                </div>
+                <div>
+                    <label>Relationship</label>
+                    <select name="reviewer-relationship-${reviewerCount}" required>
+                        <option value="">Select...</option>
+                        <option value="manager">Manager</option>
+                        <option value="peer">Peer</option>
+                        <option value="direct_report">Direct Report</option>
+                        <option value="xfn">Cross-functional</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Frequency</label>
+                    <select name="reviewer-frequency-${reviewerCount}" required>
+                        <option value="">Select...</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="rarely">Rarely</option>
+                    </select>
+                </div>
+                <div>
+                    <label>&nbsp;</label>
+                    <button type="button" class="remove-btn" onclick="removeReviewer(${reviewerCount})">×</button>
+                </div>
+            `;
+            reviewersList.appendChild(row);
+            updateSubmitButton();
+        }
+
+        function removeReviewer(id) {
+            const row = document.getElementById(`reviewer-${id}`);
+            if (row) {
+                row.remove();
+                reviewerCount--;
+                updateSubmitButton();
+            }
+        }
+
+        function updateSubmitButton() {
+            const rows = reviewersList.querySelectorAll('.reviewer-row');
+            const submitBtn = document.getElementById('submit-btn');
+            submitBtn.disabled = rows.length < 3;
+            submitBtn.textContent = rows.length < 3
+                ? `Add at least ${3 - rows.length} more reviewer${3 - rows.length > 1 ? 's' : ''}`
+                : 'Create Feedback Cycle';
+        }
+
+        // Add initial 3 reviewer rows
+        for (let i = 0; i < 3; i++) {
+            addReviewerRow();
+        }
+
+        document.getElementById('add-reviewer').addEventListener('click', addReviewerRow);
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const employeeName = document.getElementById('employee-name').value;
+            const employeeEmail = document.getElementById('employee-email').value;
+
+            try {
+                // Create employee
+                const employee = await apiFetch('/employees', {
+                    method: 'POST',
+                    body: { name: employeeName, email: employeeEmail }
+                });
+
+                // Add reviewers
+                const rows = reviewersList.querySelectorAll('.reviewer-row');
+                const reviewerLinks = [];
+
+                for (const row of rows) {
+                    const id = row.id.split('-')[1];
+                    const name = row.querySelector(`[name="reviewer-name-${id}"]`).value;
+                    const email = row.querySelector(`[name="reviewer-email-${id}"]`).value;
+                    const relationship = row.querySelector(`[name="reviewer-relationship-${id}"]`).value;
+                    const frequency = row.querySelector(`[name="reviewer-frequency-${id}"]`).value;
+
+                    const reviewer = await apiFetch(`/employees/${employee.id}/reviewers`, {
+                        method: 'POST',
+                        body: { name, email, relationship, frequency }
+                    });
+
+                    reviewerLinks.push({
+                        name,
+                        email,
+                        relationship,
+                        url: `${window.location.origin}/review/${reviewer.token}`
+                    });
+                }
+
+                // Show success
+                form.parentElement.classList.add('hidden');
+                successContainer.classList.remove('hidden');
+
+                const linksContainer = document.getElementById('reviewer-links');
+                linksContainer.innerHTML = reviewerLinks.map(r => `
+                    <div class="form-group">
+                        <strong>${r.name}</strong> (${formatRelationship(r.relationship)})
+                        <div class="link-box">
+                            ${r.url}
+                            <button type="button" class="copy-btn" onclick="copyToClipboard('${r.url}')">Copy</button>
+                        </div>
+                    </div>
+                `).join('');
+
+                document.getElementById('manager-link').href = `/manager/${employee.id}`;
+
+            } catch (error) {
+                showMessage(form.parentElement, error.message, 'error');
+            }
+        });
+    </script>
+</body>
+</html>

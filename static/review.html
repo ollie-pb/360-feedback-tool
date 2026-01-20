@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Submit Feedback - 360 Feedback</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <nav>
+        <a href="/">← Back to Home</a>
+    </nav>
+
+    <div class="container" id="loading">
+        <div class="loading">Loading review details...</div>
+    </div>
+
+    <div class="container hidden" id="already-submitted">
+        <h1>Feedback Already Submitted</h1>
+        <p>You have already submitted feedback for this review request. Thank you for your participation!</p>
+        <a href="/"><button>Back to Home</button></a>
+    </div>
+
+    <div class="container hidden" id="review-form-container">
+        <h1>360 Feedback</h1>
+        <p>You're providing feedback for <strong id="employee-name"></strong></p>
+        <p class="message info">Your relationship: <strong id="relationship"></strong></p>
+
+        <form id="review-form">
+            <div class="form-group">
+                <label for="start-doing">What should this person START doing?</label>
+                <textarea id="start-doing" required maxlength="2000"
+                    placeholder="Describe behaviours, skills, or activities they should begin..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="stop-doing">What should this person STOP doing?</label>
+                <textarea id="stop-doing" required maxlength="2000"
+                    placeholder="Describe behaviours or habits that are not serving them well..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="continue-doing">What should this person CONTINUE doing?</label>
+                <textarea id="continue-doing" required maxlength="2000"
+                    placeholder="Describe strengths and effective behaviours to maintain..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="example">Describe a specific moment you observed this person demonstrating a strength or area for growth *</label>
+                <textarea id="example" required maxlength="2000"
+                    placeholder="Share a concrete example with context about what happened and its impact..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="additional">Additional comments (optional)</label>
+                <textarea id="additional" maxlength="2000"
+                    placeholder="Any other feedback you'd like to share..."></textarea>
+            </div>
+
+            <button type="submit" id="submit-btn">Submit Feedback</button>
+        </form>
+    </div>
+
+    <div class="container hidden" id="success-container">
+        <div class="message success">
+            <strong>Thank you!</strong> Your feedback has been submitted successfully.
+        </div>
+        <h1>Feedback Submitted</h1>
+        <p>Your feedback for <strong id="success-employee-name"></strong> has been recorded.</p>
+        <p>Your input will help create a comprehensive performance summary.</p>
+        <a href="/"><button>Back to Home</button></a>
+    </div>
+
+    <div class="container hidden" id="error-container">
+        <h1>Invalid Link</h1>
+        <p>This review link is invalid or has expired. Please check you have the correct URL.</p>
+        <a href="/"><button>Back to Home</button></a>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+    <script>
+        const token = getPathParam(1); // /review/{token}
+        const loadingEl = document.getElementById('loading');
+        const formContainer = document.getElementById('review-form-container');
+        const alreadySubmittedEl = document.getElementById('already-submitted');
+        const successContainer = document.getElementById('success-container');
+        const errorContainer = document.getElementById('error-container');
+
+        async function loadReviewContext() {
+            try {
+                const context = await apiFetch(`/review/${token}`);
+
+                loadingEl.classList.add('hidden');
+
+                if (context.already_submitted) {
+                    alreadySubmittedEl.classList.remove('hidden');
+                    return;
+                }
+
+                document.getElementById('employee-name').textContent = context.employee_name;
+                document.getElementById('relationship').textContent = formatRelationship(context.relationship);
+                formContainer.classList.remove('hidden');
+
+            } catch (error) {
+                loadingEl.classList.add('hidden');
+                errorContainer.classList.remove('hidden');
+            }
+        }
+
+        document.getElementById('review-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const submitBtn = document.getElementById('submit-btn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submitting...';
+
+            try {
+                await apiFetch(`/review/${token}`, {
+                    method: 'POST',
+                    body: {
+                        start_doing: document.getElementById('start-doing').value,
+                        stop_doing: document.getElementById('stop-doing').value,
+                        continue_doing: document.getElementById('continue-doing').value,
+                        example: document.getElementById('example').value,
+                        additional: document.getElementById('additional').value || null
+                    }
+                });
+
+                const employeeName = document.getElementById('employee-name').textContent;
+                document.getElementById('success-employee-name').textContent = employeeName;
+
+                formContainer.classList.add('hidden');
+                successContainer.classList.remove('hidden');
+
+            } catch (error) {
+                showMessage(formContainer, error.message, 'error');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Feedback';
+            }
+        });
+
+        loadReviewContext();
+    </script>
+</body>
+</html>

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Review Inbox - 360 Feedback</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <nav>
+        <a href="/">← Back to Home</a>
+    </nav>
+
+    <div class="container">
+        <h1>Your Review Inbox</h1>
+        <p id="inbox-email"></p>
+
+        <div id="loading" class="loading">Loading your reviews...</div>
+
+        <div id="inbox-list" class="hidden"></div>
+
+        <div id="empty-state" class="hidden">
+            <div class="message info">
+                No feedback requests found for this email address.
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+    <script>
+        const email = decodeURIComponent(getPathParam(1)); // /inbox/{email}
+        document.getElementById('inbox-email').innerHTML = `Showing reviews for: <strong>${email}</strong>`;
+
+        async function loadInbox() {
+            const loadingEl = document.getElementById('loading');
+            const listEl = document.getElementById('inbox-list');
+            const emptyEl = document.getElementById('empty-state');
+
+            try {
+                const items = await apiFetch(`/inbox/${encodeURIComponent(email)}`);
+
+                loadingEl.classList.add('hidden');
+
+                if (items.length === 0) {
+                    emptyEl.classList.remove('hidden');
+                    return;
+                }
+
+                const pendingCount = items.filter(i => i.status === 'pending').length;
+                const submittedCount = items.filter(i => i.status === 'submitted').length;
+
+                listEl.innerHTML = `
+                    <div class="message info">
+                        ${pendingCount} pending · ${submittedCount} submitted
+                    </div>
+                    ${items.map(item => `
+                        <div class="inbox-item">
+                            <div class="details">
+                                <h3>${item.employee_name}</h3>
+                                <p>${formatRelationship(item.relationship)} · ${formatFrequency(item.frequency)} interaction</p>
+                            </div>
+                            <div>
+                                ${item.status === 'pending'
+                                    ? `<a href="/review/${item.token}"><button>Complete Review</button></a>`
+                                    : `<span class="status-badge submitted">✓ Submitted</span>`
+                                }
+                            </div>
+                        </div>
+                    `).join('')}
+                `;
+                listEl.classList.remove('hidden');
+
+            } catch (error) {
+                loadingEl.classList.add('hidden');
+                listEl.innerHTML = `<div class="message error">${error.message}</div>`;
+                listEl.classList.remove('hidden');
+            }
+        }
+
+        loadInbox();
+    </script>
+</body>
+</html>

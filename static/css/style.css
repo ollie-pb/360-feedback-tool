@@ -1,0 +1,281 @@
+/* Minimal styling for MVP */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    line-height: 1.6;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    background: #f5f5f5;
+}
+
+h1, h2, h3 {
+    color: #333;
+}
+
+.container {
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+label {
+    font-weight: 500;
+    margin-bottom: 5px;
+    display: block;
+}
+
+input, textarea, select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+button {
+    background: #007bff;
+    color: white;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+button:hover {
+    background: #0056b3;
+}
+
+button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+button.secondary {
+    background: #6c757d;
+}
+
+button.secondary:hover {
+    background: #545b62;
+}
+
+button.danger {
+    background: #dc3545;
+}
+
+button.danger:hover {
+    background: #c82333;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.reviewer-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 150px 150px 40px;
+    gap: 10px;
+    align-items: end;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    margin-bottom: 10px;
+}
+
+.reviewer-row input, .reviewer-row select {
+    margin-bottom: 0;
+}
+
+.remove-btn {
+    background: #dc3545;
+    padding: 10px;
+    font-size: 14px;
+}
+
+.message {
+    padding: 15px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+}
+
+.message.success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.message.error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.message.info {
+    background: #cce5ff;
+    color: #004085;
+    border: 1px solid #99caff;
+}
+
+.hidden {
+    display: none !important;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+
+th, td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+th {
+    background: #f8f9fa;
+    font-weight: 600;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-badge.submitted {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-badge.pending {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.summary-content {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 4px;
+    border-left: 4px solid #007bff;
+    margin: 20px 0;
+}
+
+.summary-content h2, .summary-content h3, .summary-content h4 {
+    margin-top: 0;
+}
+
+.weighting-explanation {
+    font-size: 14px;
+    color: #666;
+    font-style: italic;
+    padding: 10px;
+    background: #f0f0f0;
+    border-radius: 4px;
+    margin-top: 15px;
+}
+
+.edit-area {
+    width: 100%;
+    min-height: 300px;
+    font-family: inherit;
+    font-size: 14px;
+    padding: 15px;
+}
+
+.actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.link-box {
+    background: #f8f9fa;
+    padding: 10px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 14px;
+    word-break: break-all;
+    margin: 10px 0;
+}
+
+.copy-btn {
+    background: #28a745;
+    padding: 5px 10px;
+    font-size: 12px;
+    margin-left: 10px;
+}
+
+nav {
+    margin-bottom: 30px;
+}
+
+nav a {
+    margin-right: 20px;
+    color: #007bff;
+    text-decoration: none;
+}
+
+nav a:hover {
+    text-decoration: underline;
+}
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+}
+
+.inbox-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    margin-bottom: 10px;
+}
+
+.inbox-item .details {
+    flex: 1;
+}
+
+.inbox-item .details h3 {
+    margin: 0 0 5px 0;
+}
+
+.inbox-item .details p {
+    margin: 0;
+    color: #666;
+    font-size: 14px;
+}
+
+.finalised-banner {
+    background: #28a745;
+    color: white;
+    padding: 10px 15px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>360 Feedback Tool</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>360 Feedback Tool</h1>
+        <p>A lightweight tool for collecting and summarising 360-degree feedback.</p>
+
+        <h2>Quick Links</h2>
+
+        <div class="form-group">
+            <h3>For Employees</h3>
+            <p>Start a new feedback cycle by nominating reviewers.</p>
+            <a href="/nominate"><button>Start Feedback Cycle</button></a>
+        </div>
+
+        <div class="form-group">
+            <h3>For Reviewers</h3>
+            <p>Check your inbox for pending feedback requests.</p>
+            <form id="inbox-form">
+                <label for="reviewer-email">Your Email</label>
+                <input type="email" id="reviewer-email" placeholder="your.email@company.com" required>
+                <button type="submit">View Inbox</button>
+            </form>
+        </div>
+
+        <div class="form-group">
+            <h3>For Managers</h3>
+            <p>View feedback summaries for your team members.</p>
+            <form id="manager-form">
+                <label for="employee-id">Employee ID</label>
+                <input type="number" id="employee-id" placeholder="1" required min="1">
+                <button type="submit">View Dashboard</button>
+            </form>
+        </div>
+
+        <hr>
+
+        <h2>Demo Data</h2>
+        <p>The system is pre-seeded with test data:</p>
+        <ul>
+            <li><strong>Employee:</strong> Alex Chen (ID: 1)</li>
+            <li><strong>Reviewers:</strong> Sam Taylor (manager), Jordan Lee (peer), Casey Morgan (direct report), Riley Kumar (cross-functional)</li>
+            <li><strong>Submitted reviews:</strong> 3 of 4</li>
+        </ul>
+
+        <p>Quick links:</p>
+        <ul>
+            <li><a href="/manager/1">Manager Dashboard for Alex Chen</a></li>
+            <li><a href="/inbox/sam.taylor@company.com">Sam Taylor's Inbox</a></li>
+            <li><a href="/review/riley-kumar-token-jkl012">Riley Kumar's Pending Review</a></li>
+        </ul>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+    <script>
+        document.getElementById('inbox-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = document.getElementById('reviewer-email').value;
+            window.location.href = `/inbox/${encodeURIComponent(email)}`;
+        });
+
+        document.getElementById('manager-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const id = document.getElementById('employee-id').value;
+            window.location.href = `/manager/${id}`;
+        });
+    </script>
+</body>
+</html>

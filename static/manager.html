@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manager Dashboard - 360 Feedback</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <nav>
+        <a href="/">← Back to Home</a>
+    </nav>
+
+    <div class="container">
+        <div id="loading" class="loading">Loading dashboard...</div>
+
+        <div id="dashboard" class="hidden">
+            <h1>360 Feedback Summary</h1>
+            <h2 id="employee-name"></h2>
+
+            <div id="finalised-banner" class="finalised-banner hidden">
+                ✓ This summary has been finalised
+            </div>
+
+            <h3>Reviewer Progress</h3>
+            <p id="progress-text"></p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Relationship</th>
+                        <th>Frequency</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="reviewers-table"></tbody>
+            </table>
+
+            <div id="no-summary" class="hidden">
+                <div class="message info">
+                    At least 2 reviews are required to generate a summary.
+                </div>
+            </div>
+
+            <div id="generate-section" class="hidden">
+                <div class="message info">
+                    Ready to generate summary! Click below to create an AI-powered summary of all feedback.
+                </div>
+                <button id="generate-btn">Generate Summary</button>
+            </div>
+
+            <div id="summary-section" class="hidden">
+                <h3>AI-Generated Summary</h3>
+
+                <div id="summary-view">
+                    <div id="summary-content" class="summary-content"></div>
+                    <div id="weighting-explanation" class="weighting-explanation"></div>
+
+                    <div class="actions" id="view-actions">
+                        <button id="edit-btn">Edit Summary</button>
+                        <button id="regenerate-btn" class="secondary">Regenerate Summary</button>
+                        <button id="finalise-btn" class="danger">Finalise Summary</button>
+                    </div>
+                </div>
+
+                <div id="summary-edit" class="hidden">
+                    <textarea id="edit-area" class="edit-area"></textarea>
+                    <div class="actions">
+                        <button id="save-btn">Save Changes</button>
+                        <button id="cancel-btn" class="secondary">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="error" class="hidden">
+            <div class="message error">Employee not found</div>
+            <a href="/"><button>Back to Home</button></a>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+    <script>
+        const employeeId = getPathParam(1); // /manager/{employee_id}
+        let currentSummary = null;
+        let isFinalised = false;
+
+        async function loadDashboard() {
+            const loadingEl = document.getElementById('loading');
+            const dashboardEl = document.getElementById('dashboard');
+            const errorEl = document.getElementById('error');
+
+            try {
+                const data = await apiFetch(`/manager/${employeeId}`);
+
+                loadingEl.classList.add('hidden');
+                dashboardEl.classList.remove('hidden');
+
+                document.getElementById('employee-name').textContent = data.employee.name;
+                document.getElementById('progress-text').textContent =
+                    `${data.submitted_count} of ${data.total_reviewers} reviews submitted`;
+
+                // Render reviewers table
+                document.getElementById('reviewers-table').innerHTML = data.reviewers.map(r => `
+                    <tr>
+                        <td>${r.name}</td>
+                        <td>${formatRelationship(r.relationship)}</td>
+                        <td>${formatFrequency(r.frequency)}</td>
+                        <td><span class="status-badge ${r.status}">${r.status === 'submitted' ? '✓ Submitted' : 'Pending'}</span></td>
+                    </tr>
+                `).join('');
+
+                // Handle summary
+                if (data.summary) {
+                    currentSummary = data.summary;
+                    isFinalised = data.summary.finalised;
+
+                    document.getElementById('summary-section').classList.remove('hidden');
+                    document.getElementById('summary-content').innerHTML = markdownToHtml(data.summary.content);
+                    document.getElementById('weighting-explanation').textContent = data.summary.weighting_explanation || '';
+                    document.getElementById('edit-area').value = data.summary.content;
+
+                    if (isFinalised) {
+                        document.getElementById('finalised-banner').classList.remove('hidden');
+                        document.getElementById('view-actions').classList.add('hidden');
+                    }
+                } else if (data.submitted_count < 2) {
+                    document.getElementById('no-summary').classList.remove('hidden');
+                } else {
+                    // 2+ reviews but no summary yet - show generate button
+                    document.getElementById('generate-section').classList.remove('hidden');
+                }
+
+            } catch (error) {
+                loadingEl.classList.add('hidden');
+                errorEl.classList.remove('hidden');
+            }
+        }
+
+        // Edit mode
+        document.getElementById('edit-btn').addEventListener('click', () => {
+            document.getElementById('summary-view').classList.add('hidden');
+            document.getElementById('summary-edit').classList.remove('hidden');
+        });
+
+        document.getElementById('cancel-btn').addEventListener('click', () => {
+            document.getElementById('edit-area').value = currentSummary.content;
+            document.getElementById('summary-edit').classList.add('hidden');
+            document.getElementById('summary-view').classList.remove('hidden');
+        });
+
+        document.getElementById('save-btn').addEventListener('click', async () => {
+            const content = document.getElementById('edit-area').value;
+            const saveBtn = document.getElementById('save-btn');
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving...';
+
+            try {
+                const updated = await apiFetch(`/manager/${employeeId}/summary`, {
+                    method: 'PUT',
+                    body: { content }
+                });
+
+                currentSummary = updated;
+                document.getElementById('summary-content').innerHTML = markdownToHtml(updated.content);
+
+                document.getElementById('summary-edit').classList.add('hidden');
+                document.getElementById('summary-view').classList.remove('hidden');
+
+            } catch (error) {
+                alert(error.message);
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save Changes';
+            }
+        });
+
+        // Regenerate
+        document.getElementById('regenerate-btn').addEventListener('click', async () => {
+            if (!confirm('This will replace the current summary with a new AI-generated one. Continue?')) {
+                return;
+            }
+
+            const btn = document.getElementById('regenerate-btn');
+            btn.disabled = true;
+            btn.textContent = 'Generating...';
+
+            try {
+                const updated = await apiFetch(`/manager/${employeeId}/regenerate`, {
+                    method: 'POST'
+                });
+
+                currentSummary = updated;
+                document.getElementById('summary-content').innerHTML = markdownToHtml(updated.content);
+                document.getElementById('weighting-explanation').textContent = updated.weighting_explanation || '';
+                document.getElementById('edit-area').value = updated.content;
+
+            } catch (error) {
+                alert(error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Regenerate Summary';
+            }
+        });
+
+        // Finalise
+        document.getElementById('finalise-btn').addEventListener('click', async () => {
+            if (!confirm('Once finalised, the summary cannot be edited or regenerated. Continue?')) {
+                return;
+            }
+
+            const btn = document.getElementById('finalise-btn');
+            btn.disabled = true;
+            btn.textContent = 'Finalising...';
+
+            try {
+                const updated = await apiFetch(`/manager/${employeeId}/finalise`, {
+                    method: 'POST'
+                });
+
+                currentSummary = updated;
+                isFinalised = true;
+
+                document.getElementById('finalised-banner').classList.remove('hidden');
+                document.getElementById('view-actions').classList.add('hidden');
+
+            } catch (error) {
+                alert(error.message);
+                btn.disabled = false;
+                btn.textContent = 'Finalise Summary';
+            }
+        });
+
+        // Generate (first time)
+        document.getElementById('generate-btn').addEventListener('click', async () => {
+            const btn = document.getElementById('generate-btn');
+            btn.disabled = true;
+            btn.textContent = 'Generating...';
+
+            try {
+                const updated = await apiFetch(`/manager/${employeeId}/generate`, {
+                    method: 'POST'
+                });
+
+                currentSummary = updated;
+                document.getElementById('generate-section').classList.add('hidden');
+                document.getElementById('summary-section').classList.remove('hidden');
+                document.getElementById('summary-content').innerHTML = markdownToHtml(updated.content);
+                document.getElementById('weighting-explanation').textContent = updated.weighting_explanation || '';
+                document.getElementById('edit-area').value = updated.content;
+
+            } catch (error) {
+                alert(error.message);
+                btn.disabled = false;
+                btn.textContent = 'Generate Summary';
+            }
+        });
+
+        loadDashboard();
+    </script>
+</body>
+</html>
