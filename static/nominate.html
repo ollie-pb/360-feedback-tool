@@ -26,8 +26,17 @@
                 <input type="email" id="employee-email" required placeholder="alex.chen@company.com">
             </div>
 
-            <h2>Reviewers</h2>
-            <p>Add 3-6 people who will provide feedback. Include your manager, peers, and direct reports for a complete picture.</p>
+            <h2>Reviewers (3-6 people)</h2>
+            <p><strong>For best results, include a diverse mix:</strong></p>
+            <ul style="margin-bottom: 15px;">
+                <li>Your manager (for leadership perspective)</li>
+                <li>2-3 peers you work with regularly</li>
+                <li>Direct reports, if you manage people</li>
+                <li>Cross-functional colleagues you collaborate with</li>
+            </ul>
+            <div class="message info">
+                <strong>Why relationship & frequency matter:</strong> Feedback is weighted based on how closely someone works with you. Managers and frequent collaborators have higher influence in the final summary.
+            </div>
 
             <div id="reviewers-list">
                 <!-- Reviewer rows will be added here -->
@@ -43,13 +52,26 @@
 
     <div class="container hidden" id="success-container">
         <h1>Feedback Cycle Created!</h1>
-        <p>Share these unique links with your reviewers. Each link can only be used once.</p>
 
+        <div class="message success">
+            <strong>What's Next:</strong>
+            <ol style="margin: 10px 0 0 0; padding-left: 20px;">
+                <li>Copy each link below and send it directly to the reviewer via email or message</li>
+                <li>Each link is unique and can only be used once</li>
+                <li>Track progress using your Manager Dashboard (link below)</li>
+            </ol>
+        </div>
+
+        <h2>Reviewer Links</h2>
         <div id="reviewer-links"></div>
 
+        <div class="message info" style="margin-top: 20px;">
+            📌 <strong>Important:</strong> Bookmark your Manager Dashboard to check progress anytime. Your dashboard link is below.
+        </div>
+
         <div class="actions">
+            <a href="" id="manager-link"><button>Go to Manager Dashboard</button></a>
             <a href="/"><button class="secondary">Back to Home</button></a>
-            <a href="" id="manager-link"><button>View Manager Dashboard</button></a>
         </div>
     </div>
 
@@ -184,7 +206,7 @@
                     </div>
                 `).join('');
 
-                document.getElementById('manager-link').href = `/manager/${employee.id}`;
+                document.getElementById('manager-link').href = `/manager/${encodeURIComponent(employeeName)}`;
 
             } catch (error) {
                 showMessage(form.parentElement, error.message, 'error');

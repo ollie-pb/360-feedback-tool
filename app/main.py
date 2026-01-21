@@ -68,7 +68,7 @@ def serve_inbox(email: str):
     return FileResponse(static_dir / "inbox.html")
 
 
-@app.get("/manager/{employee_id}")
-def serve_manager(employee_id: int):
+@app.get("/manager/{employee_identifier}")
+def serve_manager(employee_identifier: str):
     """Serve manager dashboard."""
     return FileResponse(static_dir / "manager.html")

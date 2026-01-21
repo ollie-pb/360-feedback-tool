@@ -13,17 +13,28 @@ from app.services.summarisation import generate_summary
 router = APIRouter()
 
 
-@router.get("/manager/{employee_id}", response_model=ManagerDashboard)
-def get_manager_dashboard(employee_id: int, db: sqlite3.Connection = Depends(get_db)):
+@router.get("/manager/{employee_identifier}", response_model=ManagerDashboard)
+def get_manager_dashboard(employee_identifier: str, db: sqlite3.Connection = Depends(get_db)):
     """Get manager dashboard with reviewers, statuses, and summary."""
-    # Get employee
-    employee = db.execute(
-        "SELECT id, name, email, created_at FROM employees WHERE id = ?",
-        (employee_id,)
-    ).fetchone()
+    # Get employee - support lookup by ID or name
+    # Try as integer ID first
+    try:
+        employee_id = int(employee_identifier)
+        employee = db.execute(
+            "SELECT id, name, email, created_at FROM employees WHERE id = ?",
+            (employee_id,)
+        ).fetchone()
+    except ValueError:
+        # Not an integer, try name lookup
+        employee = db.execute(
+            "SELECT id, name, email, created_at FROM employees WHERE name = ?",
+            (employee_identifier,)
+        ).fetchone()
 
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found")
+
+    employee_id = employee["id"]
 
     # Get reviewers with status
     reviewers = db.execute(
