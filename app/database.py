@@ -1,11 +1,16 @@
 """SQLite database connection, schema, and seed data."""
 import sqlite3
 import secrets
+import os
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 
-DATABASE_PATH = Path(__file__).parent.parent / "feedback.db"
+# Use /tmp on Vercel (serverless), local file otherwise
+if os.environ.get("VERCEL"):
+    DATABASE_PATH = Path("/tmp/feedback.db")
+else:
+    DATABASE_PATH = Path(__file__).parent.parent / "feedback.db"
 
 
 def get_db():
