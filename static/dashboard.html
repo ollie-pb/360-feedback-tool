@@ -22,9 +22,18 @@
             <!-- My Feedback Cycles -->
             <div class="form-group">
                 <h2>My Feedback Cycles</h2>
-                <p>Cycles where you are collecting feedback.</p>
+                <p>Cycles where you are collecting feedback about yourself.</p>
                 <div id="my-cycles-list"></div>
                 <a href="/nominate"><button>Start New Feedback Cycle</button></a>
+            </div>
+
+            <hr>
+
+            <!-- Cycles to Manage -->
+            <div class="form-group">
+                <h2>Cycles to Manage</h2>
+                <p>Feedback cycles where you are the designated manager. You can view summaries and finalise feedback.</p>
+                <div id="cycles-to-manage-list"></div>
             </div>
 
             <hr>
@@ -70,7 +79,7 @@
             document.getElementById('loading').style.display = 'none';
             document.getElementById('dashboard-content').style.display = 'block';
 
-            // Render my cycles
+            // Render my cycles (no dashboard link - only manager can view)
             const cyclesContainer = document.getElementById('my-cycles-list');
             if (data.my_cycles.length === 0) {
                 cyclesContainer.innerHTML = '<p class="empty-state">No feedback cycles yet. Start one to collect feedback from your colleagues.</p>';
@@ -78,10 +87,24 @@
                 cyclesContainer.innerHTML = data.my_cycles.map(cycle => `
                     <div class="card">
                         <h3>${cycle.title || 'Feedback Cycle'}</h3>
+                        <p><strong>Progress:</strong> ${cycle.submitted_count} of ${cycle.total_reviewers} reviews submitted</p>
+                        <p><strong>Status:</strong> ${cycle.status}</p>
+                    </div>
+                `).join('');
+            }
+
+            // Render cycles to manage (where user is the manager)
+            const manageContainer = document.getElementById('cycles-to-manage-list');
+            if (data.cycles_to_manage.length === 0) {
+                manageContainer.innerHTML = '<p class="empty-state">No cycles to manage. You will see cycles here when someone designates you as their manager.</p>';
+            } else {
+                manageContainer.innerHTML = data.cycles_to_manage.map(cycle => `
+                    <div class="card">
+                        <h3>${cycle.title || 'Feedback Cycle'}</h3>
                         <p><strong>Subject:</strong> ${cycle.subject_name}</p>
                         <p><strong>Progress:</strong> ${cycle.submitted_count} of ${cycle.total_reviewers} reviews submitted</p>
                         <p><strong>Status:</strong> ${cycle.status}</p>
-                        <a href="/cycle/${cycle.id}"><button class="secondary">View Cycle</button></a>
+                        <a href="/cycle/${cycle.id}"><button class="secondary">View Dashboard</button></a>
                     </div>
                 `).join('');
             }

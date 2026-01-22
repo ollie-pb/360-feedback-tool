@@ -23,16 +23,20 @@ class CycleCreate(BaseModel):
     name: str  # Subject's name (for display)
     email: str  # Subject's email
     title: Optional[str] = None  # e.g., "Q4 2024 Review"
+    manager_name: str  # Manager's name
+    manager_email: str  # Manager's email
 
 
 class CycleResponse(BaseModel):
     id: int
     subject_user_id: int
     created_by_user_id: int
+    manager_user_id: Optional[int]
     title: Optional[str]
     status: str
     created_at: datetime
     subject_name: Optional[str] = None  # Populated from join
+    manager_name: Optional[str] = None  # Populated from join
 
 
 # Reviewer models
@@ -142,6 +146,7 @@ class UserDashboard(BaseModel):
     """User's personal dashboard."""
     user: UserResponse
     my_cycles: list[DashboardCycle]  # Cycles where user is the subject
+    cycles_to_manage: list[DashboardCycle]  # Cycles where user is the manager
     pending_reviews: list[InboxItem]  # Reviews user needs to complete
 
 
