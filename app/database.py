@@ -89,6 +89,23 @@ def init_db():
     """)
 
     conn.commit()
+
+    # Migrations: Add columns that may not exist in older databases
+    # Add manager_user_id to feedback_cycles if it doesn't exist
+    cur.execute("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'feedback_cycles' AND column_name = 'manager_user_id'
+            ) THEN
+                ALTER TABLE feedback_cycles ADD COLUMN manager_user_id INTEGER REFERENCES users(id);
+                CREATE INDEX IF NOT EXISTS idx_feedback_cycles_manager ON feedback_cycles(manager_user_id);
+            END IF;
+        END $$;
+    """)
+    conn.commit()
+
     cur.close()
     conn.close()
 
