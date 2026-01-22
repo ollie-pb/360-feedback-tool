@@ -8,8 +8,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pathlib import Path
 
-from app.database import init_db, seed_db
-from app.routes import employees, review, inbox, manager
+from app.database import init_db, seed_demo_data
+from app.routes import cycles, review, inbox, manager, auth
 
 app = FastAPI(
     title="360 Feedback Tool",
@@ -27,7 +27,8 @@ app.add_middleware(
 )
 
 # Include API routers
-app.include_router(employees.router, prefix="/api", tags=["employees"])
+app.include_router(auth.router, prefix="/api", tags=["auth"])
+app.include_router(cycles.router, prefix="/api", tags=["cycles"])
 app.include_router(review.router, prefix="/api", tags=["review"])
 app.include_router(inbox.router, prefix="/api", tags=["inbox"])
 app.include_router(manager.router, prefix="/api", tags=["manager"])
@@ -41,13 +42,19 @@ app.mount("/static", StaticFiles(directory=static_dir), name="static")
 def startup():
     """Initialize and seed database on startup."""
     init_db()
-    seed_db()
+    seed_demo_data()
 
 
 @app.get("/")
 def serve_index():
     """Serve landing page."""
     return FileResponse(static_dir / "index.html")
+
+
+@app.get("/dashboard")
+def serve_dashboard():
+    """Serve user dashboard page."""
+    return FileResponse(static_dir / "dashboard.html")
 
 
 @app.get("/nominate")
@@ -68,7 +75,14 @@ def serve_inbox(email: str):
     return FileResponse(static_dir / "inbox.html")
 
 
+@app.get("/cycle/{cycle_id}")
+def serve_cycle(cycle_id: str):
+    """Serve cycle management page."""
+    return FileResponse(static_dir / "manager.html")
+
+
+# Legacy route for backward compatibility
 @app.get("/manager/{employee_identifier}")
 def serve_manager(employee_identifier: str):
-    """Serve manager dashboard."""
+    """Serve manager dashboard (legacy URL)."""
     return FileResponse(static_dir / "manager.html")

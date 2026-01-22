@@ -11,66 +11,82 @@
         <h1>360 Feedback Tool</h1>
         <p>A lightweight tool for collecting and summarising 360-degree feedback.</p>
 
-        <h2>Quick Links</h2>
-
         <div class="form-group">
-            <h3>For Employees</h3>
-            <p>Start a new feedback cycle by nominating reviewers.</p>
-            <a href="/nominate"><button>Start Feedback Cycle</button></a>
-        </div>
-
-        <div class="form-group">
-            <h3>For Reviewers</h3>
-            <p>Check your inbox for pending feedback requests.</p>
-            <form id="inbox-form">
-                <label for="reviewer-email">Your Email</label>
-                <input type="email" id="reviewer-email" placeholder="your.email@company.com" required>
-                <button type="submit">View Inbox</button>
-            </form>
-        </div>
-
-        <div class="form-group">
-            <h3>For Managers</h3>
-            <p>View feedback summaries for your team members.</p>
-            <form id="manager-form">
-                <label for="employee-id">Employee Name</label>
-                <input type="text" id="employee-id" placeholder="Alex Chen" required>
-                <small>Enter the employee's name to view their feedback dashboard</small>
-                <button type="submit">View Dashboard</button>
+            <h2>Get Started</h2>
+            <p>Enter your details to view your dashboard, start a feedback cycle, or complete pending reviews.</p>
+            <form id="login-form">
+                <label for="user-email">Your Email</label>
+                <input type="email" id="user-email" placeholder="your.email@company.com" required>
+                <label for="user-name">Your Name</label>
+                <input type="text" id="user-name" placeholder="Your Name" required>
+                <button type="submit">Continue to Dashboard</button>
             </form>
         </div>
 
         <hr>
 
-        <h2>🔧 Testing Data (Developers Only)</h2>
-        <p>The system is pre-seeded with test data for development:</p>
-        <ul>
-            <li><strong>Employee:</strong> Alex Chen</li>
-            <li><strong>Reviewers:</strong> Sam Taylor (manager), Jordan Lee (peer), Casey Morgan (direct report), Riley Kumar (cross-functional)</li>
-            <li><strong>Submitted reviews:</strong> 3 of 4</li>
-        </ul>
-
-        <p>Quick links:</p>
-        <ul>
-            <li><a href="/manager/Alex%20Chen">Manager Dashboard for Alex Chen</a></li>
-            <li><a href="/inbox/sam.taylor@company.com">Sam Taylor's Inbox</a></li>
-            <li><a href="/review/riley-kumar-token-jkl012">Riley Kumar's Pending Review</a></li>
-        </ul>
+        <div class="form-group">
+            <h3>Demo Accounts</h3>
+            <p>Try the tool with pre-configured demo data:</p>
+            <ul>
+                <li>
+                    <strong>Alex Chen</strong> (alex@demo.360feedback) - Has an active feedback cycle with 3 submitted reviews
+                    <br><button onclick="loginAs('alex@demo.360feedback', 'Alex Chen')" class="secondary">Login as Alex</button>
+                </li>
+                <li>
+                    <strong>Sam Taylor</strong> (sam@demo.360feedback) - Alex's manager, has submitted feedback
+                    <br><button onclick="loginAs('sam@demo.360feedback', 'Sam Taylor')" class="secondary">Login as Sam</button>
+                </li>
+                <li>
+                    <strong>Riley Kumar</strong> (riley@demo.360feedback) - Has a pending review for Alex
+                    <br><button onclick="loginAs('riley@demo.360feedback', 'Riley Kumar')" class="secondary">Login as Riley</button>
+                </li>
+            </ul>
+        </div>
     </div>
 
     <script src="/static/js/app.js"></script>
     <script>
-        document.getElementById('inbox-form').addEventListener('submit', (e) => {
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const email = document.getElementById('reviewer-email').value;
-            window.location.href = `/inbox/${encodeURIComponent(email)}`;
+            const email = document.getElementById('user-email').value;
+            const name = document.getElementById('user-name').value;
+            await login(email, name);
         });
 
-        document.getElementById('manager-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const employeeName = document.getElementById('employee-id').value;
-            window.location.href = `/manager/${encodeURIComponent(employeeName)}`;
-        });
+        async function login(email, name) {
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, name })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Login failed');
+                }
+
+                const user = await response.json();
+
+                // Store user in localStorage
+                localStorage.setItem('user', JSON.stringify(user));
+
+                // Redirect to dashboard
+                window.location.href = '/dashboard';
+            } catch (error) {
+                alert('Login failed: ' + error.message);
+            }
+        }
+
+        function loginAs(email, name) {
+            login(email, name);
+        }
+
+        // If already logged in, redirect to dashboard
+        const existingUser = localStorage.getItem('user');
+        if (existingUser) {
+            window.location.href = '/dashboard';
+        }
     </script>
 </body>
 </html>

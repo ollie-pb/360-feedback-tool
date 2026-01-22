@@ -1,5 +1,4 @@
 """Review submission API routes."""
-import sqlite3
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.database import get_db
@@ -9,24 +8,30 @@ router = APIRouter()
 
 
 @router.get("/review/{token}", response_model=ReviewContext)
-def get_review_context(token: str, db: sqlite3.Connection = Depends(get_db)):
+def get_review_context(token: str, db=Depends(get_db)):
     """Get context for a review form (employee name, relationship)."""
-    row = db.execute(
-        """SELECT r.name as reviewer_name, r.relationship, e.name as employee_name, r.id as reviewer_id
+    cur = db.cursor()
+
+    cur.execute(
+        """SELECT r.name as reviewer_name, r.relationship, r.id as reviewer_id,
+                  u.name as employee_name
            FROM reviewers r
-           JOIN employees e ON r.employee_id = e.id
-           WHERE r.token = ?""",
+           JOIN feedback_cycles fc ON r.cycle_id = fc.id
+           JOIN users u ON fc.subject_user_id = u.id
+           WHERE r.token = %s""",
         (token,)
-    ).fetchone()
+    )
+    row = cur.fetchone()
 
     if not row:
         raise HTTPException(status_code=404, detail="Invalid review link")
 
     # Check if already submitted
-    submitted = db.execute(
-        "SELECT id FROM reviews WHERE reviewer_id = ?",
+    cur.execute(
+        "SELECT id FROM reviews WHERE reviewer_id = %s",
         (row["reviewer_id"],)
-    ).fetchone()
+    )
+    submitted = cur.fetchone()
 
     return ReviewContext(
         employee_name=row["employee_name"],
@@ -37,39 +42,38 @@ def get_review_context(token: str, db: sqlite3.Connection = Depends(get_db)):
 
 
 @router.post("/review/{token}", response_model=ReviewResponse)
-def submit_review(token: str, review: ReviewSubmit, db: sqlite3.Connection = Depends(get_db)):
+def submit_review(token: str, review: ReviewSubmit, db=Depends(get_db)):
     """Submit feedback for a review."""
+    cur = db.cursor()
+
     # Get reviewer info
-    reviewer = db.execute(
-        "SELECT id FROM reviewers WHERE token = ?",
+    cur.execute(
+        "SELECT id FROM reviewers WHERE token = %s",
         (token,)
-    ).fetchone()
+    )
+    reviewer = cur.fetchone()
 
     if not reviewer:
         raise HTTPException(status_code=404, detail="Invalid review link")
 
     # Check if already submitted
-    existing = db.execute(
-        "SELECT id FROM reviews WHERE reviewer_id = ?",
+    cur.execute(
+        "SELECT id FROM reviews WHERE reviewer_id = %s",
         (reviewer["id"],)
-    ).fetchone()
+    )
+    existing = cur.fetchone()
 
     if existing:
         raise HTTPException(status_code=400, detail="Feedback already submitted")
 
     # Insert review
-    cursor = db.execute(
+    cur.execute(
         """INSERT INTO reviews (reviewer_id, start_doing, stop_doing, continue_doing, example, additional)
-           VALUES (?, ?, ?, ?, ?, ?)""",
+           VALUES (%s, %s, %s, %s, %s, %s) RETURNING *""",
         (reviewer["id"], review.start_doing, review.stop_doing, review.continue_doing, review.example, review.additional)
     )
+    row = cur.fetchone()
     db.commit()
-
-    review_id = cursor.lastrowid
-    row = db.execute(
-        "SELECT * FROM reviews WHERE id = ?",
-        (review_id,)
-    ).fetchone()
 
     return ReviewResponse(
         id=row["id"],

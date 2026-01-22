@@ -1,23 +1,20 @@
-"""SQLite database connection, schema, and seed data."""
-import sqlite3
-import secrets
+"""PostgreSQL database connection, schema, and seed data."""
 import os
-from contextlib import contextmanager
-from datetime import datetime
-from pathlib import Path
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
-# Use /tmp on Vercel (serverless), local file otherwise
-if os.environ.get("VERCEL"):
-    DATABASE_PATH = Path("/tmp/feedback.db")
-else:
-    DATABASE_PATH = Path(__file__).parent.parent / "feedback.db"
+
+def get_connection():
+    """Get a database connection."""
+    return psycopg2.connect(
+        os.environ.get("POSTGRES_URL"),
+        cursor_factory=RealDictCursor
+    )
 
 
 def get_db():
     """Dependency for FastAPI endpoints."""
-    conn = sqlite3.connect(DATABASE_PATH)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
+    conn = get_connection()
     try:
         yield conn
     finally:
@@ -26,94 +23,126 @@ def get_db():
 
 def init_db():
     """Initialize database schema."""
-    conn = sqlite3.connect(DATABASE_PATH)
-    conn.execute("PRAGMA foreign_keys = ON")
+    conn = get_connection()
+    cur = conn.cursor()
 
-    conn.executescript("""
-        CREATE TABLE IF NOT EXISTS employees (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+    # Create tables
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            email TEXT UNIQUE NOT NULL,
             name TEXT NOT NULL,
-            email TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            is_demo BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP DEFAULT NOW()
+        );
+
+        CREATE TABLE IF NOT EXISTS feedback_cycles (
+            id SERIAL PRIMARY KEY,
+            subject_user_id INTEGER NOT NULL REFERENCES users(id),
+            created_by_user_id INTEGER NOT NULL REFERENCES users(id),
+            title TEXT,
+            status TEXT DEFAULT 'active',
+            created_at TIMESTAMP DEFAULT NOW()
         );
 
         CREATE TABLE IF NOT EXISTS reviewers (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            employee_id INTEGER NOT NULL REFERENCES employees(id),
+            id SERIAL PRIMARY KEY,
+            cycle_id INTEGER NOT NULL REFERENCES feedback_cycles(id),
             name TEXT NOT NULL,
             email TEXT NOT NULL,
-            relationship TEXT NOT NULL CHECK(relationship IN ('manager', 'peer', 'direct_report', 'xfn')),
-            frequency TEXT NOT NULL CHECK(frequency IN ('weekly', 'monthly', 'rarely')),
+            relationship TEXT NOT NULL,
+            frequency TEXT NOT NULL,
             token TEXT UNIQUE NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT NOW()
         );
 
         CREATE TABLE IF NOT EXISTS reviews (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             reviewer_id INTEGER NOT NULL REFERENCES reviewers(id),
             start_doing TEXT NOT NULL,
             stop_doing TEXT NOT NULL,
             continue_doing TEXT NOT NULL,
             example TEXT NOT NULL,
             additional TEXT,
-            submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            submitted_at TIMESTAMP DEFAULT NOW()
         );
 
         CREATE TABLE IF NOT EXISTS summaries (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            employee_id INTEGER NOT NULL REFERENCES employees(id),
+            id SERIAL PRIMARY KEY,
+            cycle_id INTEGER NOT NULL REFERENCES feedback_cycles(id),
             content TEXT NOT NULL,
             weighting_explanation TEXT,
             finalised BOOLEAN DEFAULT FALSE,
             finalised_at TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            updated_at TIMESTAMP DEFAULT NOW()
         );
 
-        CREATE INDEX IF NOT EXISTS idx_reviewers_employee_id ON reviewers(employee_id);
+        CREATE INDEX IF NOT EXISTS idx_feedback_cycles_subject ON feedback_cycles(subject_user_id);
+        CREATE INDEX IF NOT EXISTS idx_feedback_cycles_creator ON feedback_cycles(created_by_user_id);
+        CREATE INDEX IF NOT EXISTS idx_reviewers_cycle ON reviewers(cycle_id);
         CREATE INDEX IF NOT EXISTS idx_reviewers_token ON reviewers(token);
         CREATE INDEX IF NOT EXISTS idx_reviewers_email ON reviewers(email);
-        CREATE INDEX IF NOT EXISTS idx_reviews_reviewer_id ON reviews(reviewer_id);
-        CREATE INDEX IF NOT EXISTS idx_summaries_employee_id ON summaries(employee_id);
+        CREATE INDEX IF NOT EXISTS idx_reviews_reviewer ON reviews(reviewer_id);
+        CREATE INDEX IF NOT EXISTS idx_summaries_cycle ON summaries(cycle_id);
     """)
 
     conn.commit()
+    cur.close()
     conn.close()
 
 
-def seed_db():
-    """Seed database with test data for demo."""
-    conn = sqlite3.connect(DATABASE_PATH)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
+def seed_demo_data():
+    """Seed database with demo users and sample feedback cycle."""
+    conn = get_connection()
+    cur = conn.cursor()
 
-    # Check if already seeded
-    cursor = conn.execute("SELECT COUNT(*) as count FROM employees")
-    if cursor.fetchone()["count"] > 0:
+    # Check if demo users already exist
+    cur.execute("SELECT COUNT(*) as count FROM users WHERE is_demo = TRUE")
+    if cur.fetchone()["count"] > 0:
+        cur.close()
         conn.close()
         return
 
-    # Create employee: Alex Chen
-    conn.execute(
-        "INSERT INTO employees (name, email) VALUES (?, ?)",
-        ("Alex Chen", "alex.chen@company.com")
+    # Create demo users
+    demo_users = [
+        ("alex@demo.360feedback", "Alex Chen"),
+        ("sam@demo.360feedback", "Sam Taylor"),
+        ("jordan@demo.360feedback", "Jordan Lee"),
+        ("casey@demo.360feedback", "Casey Morgan"),
+        ("riley@demo.360feedback", "Riley Kumar"),
+    ]
+
+    user_ids = {}
+    for email, name in demo_users:
+        cur.execute(
+            "INSERT INTO users (email, name, is_demo) VALUES (%s, %s, TRUE) RETURNING id",
+            (email, name)
+        )
+        user_ids[email] = cur.fetchone()["id"]
+
+    # Create a demo feedback cycle for Alex Chen
+    alex_id = user_ids["alex@demo.360feedback"]
+    cur.execute(
+        "INSERT INTO feedback_cycles (subject_user_id, created_by_user_id, title) VALUES (%s, %s, %s) RETURNING id",
+        (alex_id, alex_id, "Q4 2024 Review")
     )
-    employee_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    cycle_id = cur.fetchone()["id"]
 
     # Create reviewers with tokens
     reviewers_data = [
-        ("Sam Taylor", "sam.taylor@company.com", "manager", "weekly", "sam-taylor-token-abc123"),
-        ("Jordan Lee", "jordan.lee@company.com", "peer", "weekly", "jordan-lee-token-def456"),
-        ("Casey Morgan", "casey.morgan@company.com", "direct_report", "monthly", "casey-morgan-token-ghi789"),
-        ("Riley Kumar", "riley.kumar@company.com", "xfn", "rarely", "riley-kumar-token-jkl012"),
+        ("Sam Taylor", "sam@demo.360feedback", "manager", "weekly", "demo-sam-token-abc123"),
+        ("Jordan Lee", "jordan@demo.360feedback", "peer", "weekly", "demo-jordan-token-def456"),
+        ("Casey Morgan", "casey@demo.360feedback", "direct_report", "monthly", "demo-casey-token-ghi789"),
+        ("Riley Kumar", "riley@demo.360feedback", "xfn", "rarely", "demo-riley-token-jkl012"),
     ]
 
     reviewer_ids = []
     for name, email, relationship, frequency, token in reviewers_data:
-        conn.execute(
-            "INSERT INTO reviewers (employee_id, name, email, relationship, frequency, token) VALUES (?, ?, ?, ?, ?, ?)",
-            (employee_id, name, email, relationship, frequency, token)
+        cur.execute(
+            "INSERT INTO reviewers (cycle_id, name, email, relationship, frequency, token) VALUES (%s, %s, %s, %s, %s, %s) RETURNING id",
+            (cycle_id, name, email, relationship, frequency, token)
         )
-        reviewer_ids.append(conn.execute("SELECT last_insert_rowid()").fetchone()[0])
+        reviewer_ids.append(cur.fetchone()["id"])
 
     # Add submitted reviews for first 3 reviewers (Sam, Jordan, Casey)
     reviews_data = [
@@ -135,10 +164,37 @@ def seed_db():
     ]
 
     for reviewer_id, start, stop, cont, example, additional in reviews_data:
-        conn.execute(
-            "INSERT INTO reviews (reviewer_id, start_doing, stop_doing, continue_doing, example, additional) VALUES (?, ?, ?, ?, ?, ?)",
+        cur.execute(
+            "INSERT INTO reviews (reviewer_id, start_doing, stop_doing, continue_doing, example, additional) VALUES (%s, %s, %s, %s, %s, %s)",
             (reviewer_id, start, stop, cont, example, additional)
         )
 
     conn.commit()
+    cur.close()
     conn.close()
+
+
+def get_or_create_user(email: str, name: str) -> dict:
+    """Get existing user or create new one."""
+    conn = get_connection()
+    cur = conn.cursor()
+
+    # Try to find existing user
+    cur.execute("SELECT * FROM users WHERE email = %s", (email,))
+    user = cur.fetchone()
+
+    if user:
+        cur.close()
+        conn.close()
+        return dict(user)
+
+    # Create new user
+    cur.execute(
+        "INSERT INTO users (email, name) VALUES (%s, %s) RETURNING *",
+        (email, name)
+    )
+    user = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+    return dict(user)

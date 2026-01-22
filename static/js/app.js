@@ -2,6 +2,26 @@
 
 const API_BASE = '/api';
 
+// User session management
+function getCurrentUser() {
+    const userJson = localStorage.getItem('user');
+    return userJson ? JSON.parse(userJson) : null;
+}
+
+function requireLogin() {
+    const user = getCurrentUser();
+    if (!user) {
+        window.location.href = '/';
+        return null;
+    }
+    return user;
+}
+
+function logout() {
+    localStorage.removeItem('user');
+    window.location.href = '/';
+}
+
 async function apiFetch(endpoint, options = {}) {
     const url = `${API_BASE}${endpoint}`;
     const config = {

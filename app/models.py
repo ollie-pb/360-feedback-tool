@@ -4,17 +4,35 @@ from typing import Optional
 from datetime import datetime
 
 
-# Employee models
-class EmployeeCreate(BaseModel):
-    name: str
-    email: str
-
-
-class EmployeeResponse(BaseModel):
+# User models
+class UserResponse(BaseModel):
     id: int
-    name: str
     email: str
+    name: str
+    is_demo: bool
     created_at: datetime
+
+
+class LoginRequest(BaseModel):
+    email: str
+    name: str
+
+
+# Feedback Cycle models (replaces Employee)
+class CycleCreate(BaseModel):
+    name: str  # Subject's name (for display)
+    email: str  # Subject's email
+    title: Optional[str] = None  # e.g., "Q4 2024 Review"
+
+
+class CycleResponse(BaseModel):
+    id: int
+    subject_user_id: int
+    created_by_user_id: int
+    title: Optional[str]
+    status: str
+    created_at: datetime
+    subject_name: Optional[str] = None  # Populated from join
 
 
 # Reviewer models
@@ -27,7 +45,7 @@ class ReviewerCreate(BaseModel):
 
 class ReviewerResponse(BaseModel):
     id: int
-    employee_id: int
+    cycle_id: int
     name: str
     email: str
     relationship: str
@@ -48,7 +66,7 @@ class ReviewerWithStatus(BaseModel):
 
 # Review models
 class ReviewContext(BaseModel):
-    employee_name: str
+    employee_name: str  # Subject of the feedback cycle
     relationship: str
     reviewer_name: str
     already_submitted: bool = False
@@ -75,18 +93,18 @@ class ReviewResponse(BaseModel):
 
 # Inbox models
 class InboxItem(BaseModel):
-    employee_name: str
-    employee_id: int
+    employee_name: str  # Subject of the feedback cycle
+    cycle_id: int
     relationship: str
     frequency: str
     token: str
     status: str  # pending or submitted
 
 
-# Manager dashboard models
+# Dashboard models
 class SummaryResponse(BaseModel):
     id: int
-    employee_id: int
+    cycle_id: int
     content: str
     weighting_explanation: Optional[str]
     finalised: bool
@@ -96,6 +114,48 @@ class SummaryResponse(BaseModel):
 
 class SummaryUpdate(BaseModel):
     content: str
+
+
+class CycleDashboard(BaseModel):
+    """Dashboard view for a feedback cycle."""
+    cycle: CycleResponse
+    subject_name: str
+    reviewers: list[ReviewerWithStatus]
+    summary: Optional[SummaryResponse]
+    submitted_count: int
+    total_reviewers: int
+
+
+# User dashboard models
+class DashboardCycle(BaseModel):
+    """Summary of a feedback cycle for dashboard display."""
+    id: int
+    title: Optional[str]
+    subject_name: str
+    status: str
+    submitted_count: int
+    total_reviewers: int
+    created_at: datetime
+
+
+class UserDashboard(BaseModel):
+    """User's personal dashboard."""
+    user: UserResponse
+    my_cycles: list[DashboardCycle]  # Cycles where user is the subject
+    pending_reviews: list[InboxItem]  # Reviews user needs to complete
+
+
+# Legacy compatibility (to be removed)
+class EmployeeCreate(BaseModel):
+    name: str
+    email: str
+
+
+class EmployeeResponse(BaseModel):
+    id: int
+    name: str
+    email: str
+    created_at: datetime
 
 
 class ManagerDashboard(BaseModel):

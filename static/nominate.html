@@ -3,27 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nominate Reviewers - 360 Feedback</title>
+    <title>Start Feedback Cycle - 360 Feedback</title>
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
     <nav>
-        <a href="/">← Back to Home</a>
+        <a href="/dashboard">← Back to Dashboard</a>
+        <span id="user-info"></span>
     </nav>
 
     <div class="container">
         <h1>Start Feedback Cycle</h1>
-        <p>Enter your details and nominate 3-6 reviewers for your 360 feedback cycle.</p>
+        <p>Create a feedback cycle to collect 360-degree feedback from your colleagues.</p>
 
         <form id="nominate-form">
-            <h2>Your Information</h2>
+            <h2>Cycle Details</h2>
             <div class="form-group">
-                <label for="employee-name">Your Name</label>
-                <input type="text" id="employee-name" required placeholder="Alex Chen">
+                <label for="cycle-title">Cycle Title (optional)</label>
+                <input type="text" id="cycle-title" placeholder="Q1 2025 Review">
+                <small>A title helps you identify this cycle later, e.g., "Q1 2025 Review" or "Mid-year Check-in"</small>
             </div>
+
             <div class="form-group">
-                <label for="employee-email">Your Email</label>
-                <input type="email" id="employee-email" required placeholder="alex.chen@company.com">
+                <p><strong>Feedback for:</strong> <span id="subject-name"></span></p>
+                <p><strong>Email:</strong> <span id="subject-email"></span></p>
             </div>
 
             <h2>Reviewers (3-6 people)</h2>
@@ -58,25 +61,32 @@
             <ol style="margin: 10px 0 0 0; padding-left: 20px;">
                 <li>Copy each link below and send it directly to the reviewer via email or message</li>
                 <li>Each link is unique and can only be used once</li>
-                <li>Track progress using your Manager Dashboard (link below)</li>
+                <li>Track progress on your cycle page (link below)</li>
             </ol>
         </div>
 
         <h2>Reviewer Links</h2>
         <div id="reviewer-links"></div>
 
-        <div class="message info" style="margin-top: 20px;">
-            📌 <strong>Important:</strong> Bookmark your Manager Dashboard to check progress anytime. Your dashboard link is below.
-        </div>
-
         <div class="actions">
-            <a href="" id="manager-link"><button>Go to Manager Dashboard</button></a>
-            <a href="/"><button class="secondary">Back to Home</button></a>
+            <a href="" id="cycle-link"><button>View Cycle Progress</button></a>
+            <a href="/dashboard"><button class="secondary">Back to Dashboard</button></a>
         </div>
     </div>
 
     <script src="/static/js/app.js"></script>
     <script>
+        // Require login
+        const user = requireLogin();
+        if (!user) {
+            // requireLogin redirects to login page
+        } else {
+            // Show user info
+            document.getElementById('user-info').textContent = user.name;
+            document.getElementById('subject-name').textContent = user.name;
+            document.getElementById('subject-email').textContent = user.email;
+        }
+
         let reviewerCount = 0;
         const reviewersList = document.getElementById('reviewers-list');
         const form = document.getElementById('nominate-form');
@@ -157,14 +167,20 @@
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            const employeeName = document.getElementById('employee-name').value;
-            const employeeEmail = document.getElementById('employee-email').value;
+            const cycleTitle = document.getElementById('cycle-title').value || null;
 
             try {
-                // Create employee
-                const employee = await apiFetch('/employees', {
+                // Create cycle (using logged-in user's info)
+                const cycle = await apiFetch('/cycles', {
                     method: 'POST',
-                    body: { name: employeeName, email: employeeEmail }
+                    headers: {
+                        'X-User-Email': user.email
+                    },
+                    body: {
+                        name: user.name,
+                        email: user.email,
+                        title: cycleTitle
+                    }
                 });
 
                 // Add reviewers
@@ -178,7 +194,7 @@
                     const relationship = row.querySelector(`[name="reviewer-relationship-${id}"]`).value;
                     const frequency = row.querySelector(`[name="reviewer-frequency-${id}"]`).value;
 
-                    const reviewer = await apiFetch(`/employees/${employee.id}/reviewers`, {
+                    const reviewer = await apiFetch(`/cycles/${cycle.id}/reviewers`, {
                         method: 'POST',
                         body: { name, email, relationship, frequency }
                     });
@@ -206,7 +222,7 @@
                     </div>
                 `).join('');
 
-                document.getElementById('manager-link').href = `/manager/${encodeURIComponent(employeeName)}`;
+                document.getElementById('cycle-link').href = `/cycle/${cycle.id}`;
 
             } catch (error) {
                 showMessage(form.parentElement, error.message, 'error');
