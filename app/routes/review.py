@@ -1,8 +1,9 @@
 """Review submission API routes."""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
 from app.database import get_db
 from app.models import ReviewContext, ReviewSubmit, ReviewResponse
+from app.services.summarisation import regenerate_summary_for_cycle
 
 router = APIRouter()
 
@@ -42,13 +43,18 @@ def get_review_context(token: str, db=Depends(get_db)):
 
 
 @router.post("/review/{token}", response_model=ReviewResponse)
-def submit_review(token: str, review: ReviewSubmit, db=Depends(get_db)):
+def submit_review(
+    token: str,
+    review: ReviewSubmit,
+    background_tasks: BackgroundTasks,
+    db=Depends(get_db)
+):
     """Submit feedback for a review."""
     cur = db.cursor()
 
-    # Get reviewer info
+    # Get reviewer info including cycle_id for background task
     cur.execute(
-        "SELECT id FROM reviewers WHERE token = %s",
+        "SELECT id, cycle_id FROM reviewers WHERE token = %s",
         (token,)
     )
     reviewer = cur.fetchone()
@@ -74,6 +80,9 @@ def submit_review(token: str, review: ReviewSubmit, db=Depends(get_db)):
     )
     row = cur.fetchone()
     db.commit()
+
+    # Trigger summary regeneration in background
+    background_tasks.add_task(regenerate_summary_for_cycle, reviewer["cycle_id"])
 
     return ReviewResponse(
         id=row["id"],

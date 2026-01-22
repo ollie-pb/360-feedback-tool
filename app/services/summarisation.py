@@ -1,6 +1,9 @@
 """AI summarisation service using Claude API."""
+import logging
 import os
 from anthropic import Anthropic
+
+logger = logging.getLogger(__name__)
 
 # Weighting factors
 RELATIONSHIP_WEIGHTS = {
@@ -124,3 +127,94 @@ Keep the tone constructive and actionable. Be concise. Use markdown formatting.
     )
 
     return summary_content, weighting_explanation
+
+
+def regenerate_summary_for_cycle(cycle_id: int):
+    """
+    Background task to regenerate summary after review submission.
+
+    Conditions:
+    - At least 2 reviews must exist
+    - Summary must NOT be finalised
+    """
+    from app.database import get_connection
+    from datetime import datetime
+
+    conn = None
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+
+        # Check review count
+        cur.execute(
+            """SELECT COUNT(*) as count FROM reviews r
+               JOIN reviewers rv ON r.reviewer_id = rv.id
+               WHERE rv.cycle_id = %s""",
+            (cycle_id,)
+        )
+        review_count = cur.fetchone()["count"]
+
+        if review_count < 2:
+            logger.info(f"Cycle {cycle_id}: Only {review_count} reviews, skipping regeneration")
+            return
+
+        # Check if summary exists and is finalised
+        cur.execute(
+            "SELECT id, finalised FROM summaries WHERE cycle_id = %s",
+            (cycle_id,)
+        )
+        existing_summary = cur.fetchone()
+
+        if existing_summary and existing_summary["finalised"]:
+            logger.info(f"Cycle {cycle_id}: Summary is finalised, skipping regeneration")
+            return
+
+        # Get subject name for generation
+        cur.execute(
+            """SELECT u.name as subject_name
+               FROM feedback_cycles fc
+               JOIN users u ON fc.subject_user_id = u.id
+               WHERE fc.id = %s""",
+            (cycle_id,)
+        )
+        cycle_info = cur.fetchone()
+        subject_name = cycle_info["subject_name"]
+
+        # Fetch reviews with weighting info
+        cur.execute(
+            """SELECT rev.*, r.name as reviewer_name, r.relationship, r.frequency
+               FROM reviews rev
+               JOIN reviewers r ON rev.reviewer_id = r.id
+               WHERE r.cycle_id = %s""",
+            (cycle_id,)
+        )
+        reviews = [dict(row) for row in cur.fetchall()]
+
+        # Generate summary
+        summary_content, weighting_explanation = generate_summary(subject_name, reviews)
+
+        # Save or update summary
+        now = datetime.now()
+        if existing_summary:
+            cur.execute(
+                """UPDATE summaries
+                   SET content = %s, weighting_explanation = %s, updated_at = %s
+                   WHERE cycle_id = %s""",
+                (summary_content, weighting_explanation, now, cycle_id)
+            )
+        else:
+            cur.execute(
+                """INSERT INTO summaries (cycle_id, content, weighting_explanation, updated_at)
+                   VALUES (%s, %s, %s, %s)""",
+                (cycle_id, summary_content, weighting_explanation, now)
+            )
+
+        conn.commit()
+        logger.info(f"Cycle {cycle_id}: Summary regenerated successfully")
+
+    except Exception as e:
+        logger.exception(f"Cycle {cycle_id}: Failed to regenerate summary: {e}")
+        # Don't re-raise - background task failures should be silent
+    finally:
+        if conn:
+            conn.close()
