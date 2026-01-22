@@ -19,6 +19,15 @@
         <div id="loading">Loading your dashboard...</div>
 
         <div id="dashboard-content" style="display: none;">
+            <!-- Cycles I Manage -->
+            <div class="form-group" id="managed-cycles-section" style="display: none;">
+                <h2>Cycles You Manage</h2>
+                <p>Review and discuss feedback with your direct reports.</p>
+                <div id="managed-cycles-list"></div>
+            </div>
+
+            <hr id="managed-cycles-hr" style="display: none;">
+
             <!-- My Feedback Cycles -->
             <div class="form-group">
                 <h2>My Feedback Cycles</h2>
@@ -69,6 +78,22 @@
         function renderDashboard(data) {
             document.getElementById('loading').style.display = 'none';
             document.getElementById('dashboard-content').style.display = 'block';
+
+            // Render managed cycles (cycles where user is the manager)
+            const managedContainer = document.getElementById('managed-cycles-list');
+            if (data.managed_cycles && data.managed_cycles.length > 0) {
+                document.getElementById('managed-cycles-section').style.display = 'block';
+                document.getElementById('managed-cycles-hr').style.display = 'block';
+                managedContainer.innerHTML = data.managed_cycles.map(cycle => `
+                    <div class="card">
+                        <h3>${cycle.title || 'Feedback Cycle'}</h3>
+                        <p><strong>Employee:</strong> ${cycle.subject_name}</p>
+                        <p><strong>Progress:</strong> ${cycle.submitted_count} of ${cycle.total_reviewers} reviews submitted</p>
+                        <p><strong>Status:</strong> ${cycle.status}</p>
+                        <a href="/cycle/${cycle.id}"><button class="secondary">View & Review Feedback</button></a>
+                    </div>
+                `).join('');
+            }
 
             // Render my cycles
             const cyclesContainer = document.getElementById('my-cycles-list');

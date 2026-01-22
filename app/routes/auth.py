@@ -65,6 +65,35 @@ def get_dashboard(email: str, db=Depends(get_db)):
         for row in cur.fetchall()
     ]
 
+    # Get cycles where user is the manager
+    cur.execute(
+        """SELECT fc.id, fc.title, fc.status, fc.created_at, u.name as subject_name,
+                  m.name as manager_name,
+                  (SELECT COUNT(*) FROM reviewers r WHERE r.cycle_id = fc.id) as total_reviewers,
+                  (SELECT COUNT(*) FROM reviewers r
+                   JOIN reviews rev ON r.id = rev.reviewer_id
+                   WHERE r.cycle_id = fc.id) as submitted_count
+           FROM feedback_cycles fc
+           JOIN users u ON fc.subject_user_id = u.id
+           LEFT JOIN users m ON fc.manager_user_id = m.id
+           WHERE fc.manager_user_id = %s
+           ORDER BY fc.created_at DESC""",
+        (user["id"],)
+    )
+    managed_cycles = [
+        DashboardCycle(
+            id=row["id"],
+            title=row["title"],
+            subject_name=row["subject_name"],
+            manager_name=row.get("manager_name"),
+            status=row["status"],
+            submitted_count=row["submitted_count"],
+            total_reviewers=row["total_reviewers"],
+            created_at=row["created_at"]
+        )
+        for row in cur.fetchall()
+    ]
+
     # Get pending reviews (where user is a reviewer)
     cur.execute(
         """SELECT r.id, r.cycle_id, r.relationship, r.frequency, r.token,
@@ -98,5 +127,6 @@ def get_dashboard(email: str, db=Depends(get_db)):
             created_at=user["created_at"]
         ),
         my_cycles=my_cycles,
+        managed_cycles=managed_cycles,
         pending_reviews=pending_reviews
     )

@@ -148,6 +148,7 @@ class UserDashboard(BaseModel):
     """User's personal dashboard."""
     user: UserResponse
     my_cycles: list[DashboardCycle]  # Cycles where user is the subject
+    managed_cycles: list[DashboardCycle]  # Cycles where user is the manager
     pending_reviews: list[InboxItem]  # Reviews user needs to complete
 
 
