@@ -40,7 +40,15 @@ async function apiFetch(endpoint, options = {}) {
 
     if (!response.ok) {
         const error = await response.json().catch(() => ({ detail: 'An error occurred' }));
-        throw new Error(error.detail || 'An error occurred');
+        // Handle FastAPI validation errors (422) which return detail as an array
+        let message = 'An error occurred';
+        if (typeof error.detail === 'string') {
+            message = error.detail;
+        } else if (Array.isArray(error.detail)) {
+            // FastAPI validation error format
+            message = error.detail.map(e => `${e.loc?.join('.')}: ${e.msg}`).join(', ');
+        }
+        throw new Error(message);
     }
 
     return response.json();
