@@ -25,11 +25,11 @@ function logout() {
 async function apiFetch(endpoint, options = {}) {
     const url = `${API_BASE}${endpoint}`;
     const config = {
+        ...options,
         headers: {
             'Content-Type': 'application/json',
             ...options.headers,
         },
-        ...options,
     };
 
     if (options.body && typeof options.body === 'object') {
