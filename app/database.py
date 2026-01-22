@@ -40,6 +40,7 @@ def init_db():
             id SERIAL PRIMARY KEY,
             subject_user_id INTEGER NOT NULL REFERENCES users(id),
             created_by_user_id INTEGER NOT NULL REFERENCES users(id),
+            manager_user_id INTEGER REFERENCES users(id),
             title TEXT,
             status TEXT DEFAULT 'active',
             created_at TIMESTAMP DEFAULT NOW()
@@ -79,6 +80,7 @@ def init_db():
 
         CREATE INDEX IF NOT EXISTS idx_feedback_cycles_subject ON feedback_cycles(subject_user_id);
         CREATE INDEX IF NOT EXISTS idx_feedback_cycles_creator ON feedback_cycles(created_by_user_id);
+        CREATE INDEX IF NOT EXISTS idx_feedback_cycles_manager ON feedback_cycles(manager_user_id);
         CREATE INDEX IF NOT EXISTS idx_reviewers_cycle ON reviewers(cycle_id);
         CREATE INDEX IF NOT EXISTS idx_reviewers_token ON reviewers(token);
         CREATE INDEX IF NOT EXISTS idx_reviewers_email ON reviewers(email);

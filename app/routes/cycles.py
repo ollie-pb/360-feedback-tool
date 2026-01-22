@@ -22,6 +22,10 @@ def create_cycle(
     subject_user = get_or_create_user(cycle.email, cycle.name)
     subject_user_id = subject_user["id"]
 
+    # Get or create the manager user
+    manager_user = get_or_create_user(cycle.manager_email, cycle.manager_name)
+    manager_user_id = manager_user["id"]
+
     # Determine who created the cycle
     # If logged in, use that user; otherwise, assume self-nomination
     if x_user_email:
@@ -33,9 +37,9 @@ def create_cycle(
 
     # Create the feedback cycle
     cur.execute(
-        """INSERT INTO feedback_cycles (subject_user_id, created_by_user_id, title)
-           VALUES (%s, %s, %s) RETURNING *""",
-        (subject_user_id, created_by_user_id, cycle.title)
+        """INSERT INTO feedback_cycles (subject_user_id, created_by_user_id, manager_user_id, title)
+           VALUES (%s, %s, %s, %s) RETURNING *""",
+        (subject_user_id, created_by_user_id, manager_user_id, cycle.title)
     )
     row = cur.fetchone()
     db.commit()
@@ -44,10 +48,13 @@ def create_cycle(
         id=row["id"],
         subject_user_id=row["subject_user_id"],
         created_by_user_id=row["created_by_user_id"],
+        manager_user_id=row["manager_user_id"],
         title=row["title"],
         status=row["status"],
         created_at=row["created_at"],
-        subject_name=cycle.name
+        subject_name=cycle.name,
+        manager_name=cycle.manager_name,
+        manager_email=cycle.manager_email
     )
 
 

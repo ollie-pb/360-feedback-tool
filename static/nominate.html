@@ -29,6 +29,17 @@
                 <p><strong>Email:</strong> <span id="subject-email"></span></p>
             </div>
 
+            <h2>Your Manager</h2>
+            <p>Who should review and discuss this feedback with you?</p>
+            <div class="form-group">
+                <label for="manager-name">Manager's Name</label>
+                <input type="text" id="manager-name" required placeholder="Sam Taylor">
+            </div>
+            <div class="form-group">
+                <label for="manager-email">Manager's Email</label>
+                <input type="email" id="manager-email" required placeholder="sam.taylor@company.com">
+            </div>
+
             <h2>Reviewers (3-6 people)</h2>
             <p><strong>For best results, include a diverse mix:</strong></p>
             <ul style="margin-bottom: 15px;">
@@ -61,7 +72,8 @@
             <ol style="margin: 10px 0 0 0; padding-left: 20px;">
                 <li>Copy each link below and send it directly to the reviewer via email or message</li>
                 <li>Each link is unique and can only be used once</li>
-                <li>Track progress on your cycle page (link below)</li>
+                <li>Your manager (<span id="manager-name-display"></span>) will be notified when feedback is ready</li>
+                <li>They'll review and discuss the feedback with you</li>
             </ol>
         </div>
 
@@ -69,8 +81,7 @@
         <div id="reviewer-links"></div>
 
         <div class="actions">
-            <a href="" id="cycle-link"><button>View Cycle Progress</button></a>
-            <a href="/dashboard"><button class="secondary">Back to Dashboard</button></a>
+            <a href="/dashboard"><button>Back to Dashboard</button></a>
         </div>
     </div>
 
@@ -168,6 +179,8 @@
             e.preventDefault();
 
             const cycleTitle = document.getElementById('cycle-title').value || null;
+            const managerName = document.getElementById('manager-name').value;
+            const managerEmail = document.getElementById('manager-email').value;
 
             try {
                 // Create cycle (using logged-in user's info)
@@ -179,7 +192,9 @@
                     body: {
                         name: user.name,
                         email: user.email,
-                        title: cycleTitle
+                        title: cycleTitle,
+                        manager_name: managerName,
+                        manager_email: managerEmail
                     }
                 });
 
@@ -222,7 +237,7 @@
                     </div>
                 `).join('');
 
-                document.getElementById('cycle-link').href = `/cycle/${cycle.id}`;
+                document.getElementById('manager-name-display').textContent = managerName;
 
             } catch (error) {
                 showMessage(form.parentElement, error.message, 'error');

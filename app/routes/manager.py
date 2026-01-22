@@ -26,9 +26,11 @@ def get_manager_dashboard(cycle_identifier: str, db=Depends(get_db)):
     try:
         cycle_id = int(cycle_identifier)
         cur.execute(
-            """SELECT fc.*, u.name as subject_name, u.email as subject_email
+            """SELECT fc.*, u.name as subject_name, u.email as subject_email,
+                      m.name as manager_name, m.email as manager_email
                FROM feedback_cycles fc
                JOIN users u ON fc.subject_user_id = u.id
+               LEFT JOIN users m ON fc.manager_user_id = m.id
                WHERE fc.id = %s""",
             (cycle_id,)
         )
@@ -36,9 +38,11 @@ def get_manager_dashboard(cycle_identifier: str, db=Depends(get_db)):
     except ValueError:
         # Not an integer, try name lookup (finds most recent cycle for that person)
         cur.execute(
-            """SELECT fc.*, u.name as subject_name, u.email as subject_email
+            """SELECT fc.*, u.name as subject_name, u.email as subject_email,
+                      m.name as manager_name, m.email as manager_email
                FROM feedback_cycles fc
                JOIN users u ON fc.subject_user_id = u.id
+               LEFT JOIN users m ON fc.manager_user_id = m.id
                WHERE u.name = %s
                ORDER BY fc.created_at DESC
                LIMIT 1""",
@@ -100,6 +104,9 @@ def get_manager_dashboard(cycle_identifier: str, db=Depends(get_db)):
             email=cycle["subject_email"],
             created_at=cycle["created_at"]
         ),
+        subject_email=cycle["subject_email"],
+        manager_name=cycle.get("manager_name"),
+        manager_email=cycle.get("manager_email"),
         reviewers=reviewers_list,
         summary=summary_response,
         submitted_count=submitted_count,

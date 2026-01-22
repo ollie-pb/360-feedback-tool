@@ -93,6 +93,7 @@
         const employeeIdentifier = getPathParam(1); // /manager/{employee_identifier} (name or ID)
         let currentSummary = null;
         let isFinalised = false;
+        const user = getCurrentUser();
 
         async function loadDashboard() {
             const loadingEl = document.getElementById('loading');
@@ -105,44 +106,76 @@
                 loadingEl.classList.add('hidden');
                 dashboardEl.classList.remove('hidden');
 
-                document.getElementById('employee-name').textContent = data.employee.name;
-                document.getElementById('progress-text').textContent =
-                    `${data.submitted_count} of ${data.total_reviewers} reviews submitted`;
+                // Check if current user is the subject (person being reviewed)
+                const isSubject = user && user.email === data.subject_email;
 
-                // Render reviewers table
-                document.getElementById('reviewers-table').innerHTML = data.reviewers.map(r => `
-                    <tr>
-                        <td>${r.name}</td>
-                        <td>${formatRelationship(r.relationship)}</td>
-                        <td>${formatFrequency(r.frequency)}</td>
-                        <td><span class="status-badge ${r.status}">${r.status === 'submitted' ? '✓ Submitted' : 'Pending'}</span></td>
-                    </tr>
-                `).join('');
-
-                // Handle summary
-                if (data.summary) {
-                    currentSummary = data.summary;
-                    isFinalised = data.summary.finalised;
-
-                    document.getElementById('summary-section').classList.remove('hidden');
-                    document.getElementById('summary-content').innerHTML = markdownToHtml(data.summary.content);
-                    document.getElementById('weighting-explanation').textContent = data.summary.weighting_explanation || '';
-                    document.getElementById('edit-area').value = data.summary.content;
-
-                    if (isFinalised) {
-                        document.getElementById('finalised-banner').classList.remove('hidden');
-                        document.getElementById('view-actions').classList.add('hidden');
-                    }
-                } else if (data.submitted_count < 2) {
-                    document.getElementById('no-summary').classList.remove('hidden');
+                if (isSubject) {
+                    // Subject sees limited view
+                    renderSubjectView(data);
                 } else {
-                    // 2+ reviews but no summary yet - show generate button
-                    document.getElementById('generate-section').classList.remove('hidden');
+                    // Manager/others see full dashboard
+                    renderManagerView(data);
                 }
 
             } catch (error) {
                 loadingEl.classList.add('hidden');
                 errorEl.classList.remove('hidden');
+            }
+        }
+
+        function renderSubjectView(data) {
+            document.getElementById('dashboard').innerHTML = `
+                <h1>Your Feedback Cycle</h1>
+                <h2>${data.employee.name}</h2>
+
+                <div class="card">
+                    <h3>Collection Progress</h3>
+                    <p><strong>${data.submitted_count} of ${data.total_reviewers}</strong> reviewers have submitted feedback</p>
+                    <progress value="${data.submitted_count}" max="${data.total_reviewers}" style="width: 100%; height: 20px;"></progress>
+                </div>
+
+                <div class="message info">
+                    <p>Your manager <strong>${data.manager_name || 'assigned to this cycle'}</strong> will review this feedback and discuss it with you once collection is complete.</p>
+                </div>
+
+                <a href="/dashboard"><button class="secondary">Back to Dashboard</button></a>
+            `;
+        }
+
+        function renderManagerView(data) {
+            document.getElementById('employee-name').textContent = data.employee.name;
+            document.getElementById('progress-text').textContent =
+                `${data.submitted_count} of ${data.total_reviewers} reviews submitted`;
+
+            // Render reviewers table
+            document.getElementById('reviewers-table').innerHTML = data.reviewers.map(r => `
+                <tr>
+                    <td>${r.name}</td>
+                    <td>${formatRelationship(r.relationship)}</td>
+                    <td>${formatFrequency(r.frequency)}</td>
+                    <td><span class="status-badge ${r.status}">${r.status === 'submitted' ? '✓ Submitted' : 'Pending'}</span></td>
+                </tr>
+            `).join('');
+
+            // Handle summary
+            if (data.summary) {
+                currentSummary = data.summary;
+                isFinalised = data.summary.finalised;
+
+                document.getElementById('summary-section').classList.remove('hidden');
+                document.getElementById('summary-content').innerHTML = markdownToHtml(data.summary.content);
+                document.getElementById('weighting-explanation').textContent = data.summary.weighting_explanation || '';
+                document.getElementById('edit-area').value = data.summary.content;
+
+                if (isFinalised) {
+                    document.getElementById('finalised-banner').classList.remove('hidden');
+                    document.getElementById('view-actions').classList.add('hidden');
+                }
+            } else if (data.submitted_count < 2) {
+                document.getElementById('no-summary').classList.remove('hidden');
+            } else {
+                // 2+ reviews but no summary yet - show generate button
+                document.getElementById('generate-section').classList.remove('hidden');
             }
         }
 

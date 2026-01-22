@@ -39,12 +39,14 @@ def get_dashboard(email: str, db=Depends(get_db)):
     # Get cycles where user is the subject
     cur.execute(
         """SELECT fc.id, fc.title, fc.status, fc.created_at, u.name as subject_name,
+                  m.name as manager_name,
                   (SELECT COUNT(*) FROM reviewers r WHERE r.cycle_id = fc.id) as total_reviewers,
                   (SELECT COUNT(*) FROM reviewers r
                    JOIN reviews rev ON r.id = rev.reviewer_id
                    WHERE r.cycle_id = fc.id) as submitted_count
            FROM feedback_cycles fc
            JOIN users u ON fc.subject_user_id = u.id
+           LEFT JOIN users m ON fc.manager_user_id = m.id
            WHERE fc.subject_user_id = %s
            ORDER BY fc.created_at DESC""",
         (user["id"],)
@@ -54,6 +56,7 @@ def get_dashboard(email: str, db=Depends(get_db)):
             id=row["id"],
             title=row["title"],
             subject_name=row["subject_name"],
+            manager_name=row.get("manager_name"),
             status=row["status"],
             submitted_count=row["submitted_count"],
             total_reviewers=row["total_reviewers"],

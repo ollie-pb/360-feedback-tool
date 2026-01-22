@@ -23,16 +23,21 @@ class CycleCreate(BaseModel):
     name: str  # Subject's name (for display)
     email: str  # Subject's email
     title: Optional[str] = None  # e.g., "Q4 2024 Review"
+    manager_name: str  # Manager who will review the feedback
+    manager_email: str  # Manager's email
 
 
 class CycleResponse(BaseModel):
     id: int
     subject_user_id: int
     created_by_user_id: int
+    manager_user_id: Optional[int] = None
     title: Optional[str]
     status: str
     created_at: datetime
     subject_name: Optional[str] = None  # Populated from join
+    manager_name: Optional[str] = None  # Populated from join
+    manager_email: Optional[str] = None  # Populated from join
 
 
 # Reviewer models
@@ -132,6 +137,7 @@ class DashboardCycle(BaseModel):
     id: int
     title: Optional[str]
     subject_name: str
+    manager_name: Optional[str] = None
     status: str
     submitted_count: int
     total_reviewers: int
@@ -160,6 +166,9 @@ class EmployeeResponse(BaseModel):
 
 class ManagerDashboard(BaseModel):
     employee: EmployeeResponse
+    subject_email: Optional[str] = None
+    manager_name: Optional[str] = None
+    manager_email: Optional[str] = None
     reviewers: list[ReviewerWithStatus]
     summary: Optional[SummaryResponse]
     submitted_count: int

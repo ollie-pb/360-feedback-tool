@@ -78,10 +78,9 @@
                 cyclesContainer.innerHTML = data.my_cycles.map(cycle => `
                     <div class="card">
                         <h3>${cycle.title || 'Feedback Cycle'}</h3>
-                        <p><strong>Subject:</strong> ${cycle.subject_name}</p>
                         <p><strong>Progress:</strong> ${cycle.submitted_count} of ${cycle.total_reviewers} reviews submitted</p>
+                        <p><strong>Manager:</strong> ${cycle.manager_name || 'Not assigned'}</p>
                         <p><strong>Status:</strong> ${cycle.status}</p>
-                        <a href="/cycle/${cycle.id}"><button class="secondary">View Cycle</button></a>
                     </div>
                 `).join('');
             }
