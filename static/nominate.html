@@ -7,12 +7,15 @@
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-    <nav>
-        <a href="/dashboard">← Back to Dashboard</a>
-        <span id="user-info"></span>
-    </nav>
-
     <div class="container">
+        <header class="site-header">
+            <a href="/dashboard" class="header-brand">360 Feedback</a>
+            <nav class="header-nav">
+                <a href="/dashboard">← Back</a>
+                <span class="user-name" id="user-info"></span>
+                <button onclick="logout()" class="btn-link">Logout</button>
+            </nav>
+        </header>
         <h1>Start Feedback Cycle</h1>
         <p>Create a feedback cycle to collect 360-degree feedback from your colleagues.</p>
 
@@ -62,26 +65,26 @@
                 <button type="submit" id="submit-btn">Create Feedback Cycle</button>
             </div>
         </form>
-    </div>
 
-    <div class="container hidden" id="success-container">
-        <h1>Feedback Cycle Created!</h1>
+        <div class="hidden" id="success-container">
+            <h1>Feedback Cycle Created!</h1>
 
-        <div class="message success">
-            <strong>What's Next:</strong>
-            <ol style="margin: 10px 0 0 0; padding-left: 20px;">
-                <li>Copy each link below and send it directly to the reviewer via email or message</li>
-                <li>Each link is unique and can only be used once</li>
-                <li>Your manager (<span id="manager-name-display"></span>) will be notified when feedback is ready</li>
-                <li>They'll review and discuss the feedback with you</li>
-            </ol>
-        </div>
+            <div class="message success">
+                <strong>What's Next:</strong>
+                <ol style="margin: 10px 0 0 0; padding-left: 20px;">
+                    <li>Copy each link below and send it directly to the reviewer via email or message</li>
+                    <li>Each link is unique and can only be used once</li>
+                    <li>Your manager (<span id="manager-name-display"></span>) will be notified when feedback is ready</li>
+                    <li>They'll review and discuss the feedback with you</li>
+                </ol>
+            </div>
 
-        <h2>Reviewer Links</h2>
-        <div id="reviewer-links"></div>
+            <h2>Reviewer Links</h2>
+            <div id="reviewer-links"></div>
 
-        <div class="actions">
-            <a href="/dashboard"><button>Back to Dashboard</button></a>
+            <div class="actions">
+                <a href="/dashboard"><button>Back to Dashboard</button></a>
+            </div>
         </div>
     </div>
 
@@ -105,7 +108,7 @@
 
         function addReviewerRow() {
             if (reviewerCount >= 6) {
-                alert('Maximum 6 reviewers allowed');
+                Toast.info('Maximum 6 reviewers allowed');
                 return;
             }
 
@@ -178,6 +181,9 @@
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
 
+            const submitBtn = document.getElementById('submit-btn');
+            setButtonLoading(submitBtn, true, 'Creating...');
+
             const cycleTitle = document.getElementById('cycle-title').value || null;
             const managerName = document.getElementById('manager-name').value;
             const managerEmail = document.getElementById('manager-email').value;
@@ -238,9 +244,11 @@
                 `).join('');
 
                 document.getElementById('manager-name-display').textContent = managerName;
+                Toast.success('Feedback cycle created!');
 
             } catch (error) {
-                showMessage(form.parentElement, error.message, 'error');
+                Toast.error(error.message);
+                setButtonLoading(submitBtn, false);
             }
         });
     </script>

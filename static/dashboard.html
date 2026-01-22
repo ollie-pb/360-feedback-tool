@@ -8,13 +8,15 @@
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>Dashboard</h1>
-            <div id="user-info">
-                <span id="user-name-display"></span>
-                <button onclick="logout()" class="secondary">Logout</button>
-            </div>
-        </div>
+        <header class="site-header">
+            <a href="/dashboard" class="header-brand">360 Feedback</a>
+            <nav class="header-nav">
+                <span class="user-name" id="user-name-display"></span>
+                <button onclick="logout()" class="btn-link">Logout</button>
+            </nav>
+        </header>
+
+        <h1>Dashboard</h1>
 
         <div id="loading">Loading your dashboard...</div>
 
@@ -98,7 +100,12 @@
             // Render my cycles
             const cyclesContainer = document.getElementById('my-cycles-list');
             if (data.my_cycles.length === 0) {
-                cyclesContainer.innerHTML = '<p class="empty-state">No feedback cycles yet. Start one to collect feedback from your colleagues.</p>';
+                cyclesContainer.innerHTML = `
+                    <div class="empty-state">
+                        <p class="empty-state-title">No feedback cycles yet</p>
+                        <p class="empty-state-description">Start one to collect feedback from your colleagues.</p>
+                    </div>
+                `;
             } else {
                 cyclesContainer.innerHTML = data.my_cycles.map(cycle => `
                     <div class="card">
@@ -116,7 +123,12 @@
             const submittedOnly = data.pending_reviews.filter(r => r.status === 'submitted');
 
             if (data.pending_reviews.length === 0) {
-                reviewsContainer.innerHTML = '<p class="empty-state">No feedback requests at this time.</p>';
+                reviewsContainer.innerHTML = `
+                    <div class="empty-state">
+                        <p class="empty-state-title">No feedback requests</p>
+                        <p class="empty-state-description">You'll see requests here when colleagues ask for your feedback.</p>
+                    </div>
+                `;
             } else {
                 let html = '';
 

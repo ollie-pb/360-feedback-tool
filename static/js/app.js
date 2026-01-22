@@ -2,6 +2,78 @@
 
 const API_BASE = '/api';
 
+// === Toast Notification System ===
+const Toast = {
+    container: null,
+
+    init() {
+        this.container = document.getElementById('toast-container');
+        if (!this.container) {
+            this.container = document.createElement('div');
+            this.container.id = 'toast-container';
+            this.container.setAttribute('role', 'status');
+            this.container.setAttribute('aria-live', 'polite');
+            document.body.appendChild(this.container);
+        }
+    },
+
+    show(message, type = 'info', duration = 4000) {
+        if (!this.container) this.init();
+
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.innerHTML = `
+            <span>${message}</span>
+            ${type === 'error' ? '<button class="dismiss" onclick="this.parentElement.remove()" aria-label="Dismiss">×</button>' : ''}
+        `;
+
+        this.container.appendChild(toast);
+
+        // Limit to 3 toasts
+        while (this.container.children.length > 3) {
+            this.container.firstChild.remove();
+        }
+
+        // Trigger animation
+        requestAnimationFrame(() => toast.classList.add('visible'));
+
+        // Auto-dismiss (except errors)
+        if (type !== 'error') {
+            setTimeout(() => {
+                toast.classList.remove('visible');
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+        }
+    },
+
+    success(msg) { this.show(msg, 'success'); },
+    error(msg) { this.show(msg, 'error'); },
+    info(msg) { this.show(msg, 'info'); }
+};
+
+// Initialize toast on page load
+document.addEventListener('DOMContentLoaded', () => Toast.init());
+
+// === Loading Button State ===
+function setButtonLoading(button, isLoading, loadingText) {
+    const textEl = button.querySelector('.btn-text') || button;
+    const spinnerEl = button.querySelector('.spinner');
+    const originalText = button.dataset.originalText || textEl.textContent;
+
+    if (isLoading) {
+        button.dataset.originalText = originalText;
+        button.setAttribute('aria-busy', 'true');
+        button.disabled = true;
+        textEl.textContent = loadingText || 'Loading...';
+        if (spinnerEl) spinnerEl.hidden = false;
+    } else {
+        button.removeAttribute('aria-busy');
+        button.disabled = false;
+        textEl.textContent = originalText;
+        if (spinnerEl) spinnerEl.hidden = true;
+    }
+}
+
 // User session management
 function getCurrentUser() {
     const userJson = localStorage.getItem('user');
@@ -89,16 +161,22 @@ function formatFrequency(frequency) {
 
 function copyToClipboard(text) {
     navigator.clipboard.writeText(text).then(() => {
-        alert('Copied to clipboard!');
+        Toast.success('Copied to clipboard!');
     }).catch(() => {
         // Fallback for older browsers
         const textarea = document.createElement('textarea');
         textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
         document.body.appendChild(textarea);
         textarea.select();
-        document.execCommand('copy');
+        try {
+            document.execCommand('copy');
+            Toast.success('Copied to clipboard!');
+        } catch (e) {
+            Toast.error('Failed to copy');
+        }
         document.body.removeChild(textarea);
-        alert('Copied to clipboard!');
     });
 }
 

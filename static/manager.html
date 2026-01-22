@@ -7,11 +7,16 @@
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-    <nav>
-        <a href="/dashboard" id="back-link">← Back to Dashboard</a>
-    </nav>
-
     <div class="container">
+        <header class="site-header">
+            <a href="/dashboard" class="header-brand">360 Feedback</a>
+            <nav class="header-nav">
+                <a href="/dashboard">← Back</a>
+                <span class="user-name" id="user-display"></span>
+                <button onclick="logout()" class="btn-link">Logout</button>
+            </nav>
+        </header>
+
         <div id="loading" class="loading">Loading feedback cycle...</div>
 
         <div id="dashboard" class="hidden">
@@ -94,6 +99,11 @@
         let currentSummary = null;
         let isFinalised = false;
         const user = getCurrentUser();
+
+        // Display user name if logged in
+        if (user) {
+            document.getElementById('user-display').textContent = user.name;
+        }
 
         async function loadDashboard() {
             const loadingEl = document.getElementById('loading');
@@ -194,8 +204,7 @@
         document.getElementById('save-btn').addEventListener('click', async () => {
             const content = document.getElementById('edit-area').value;
             const saveBtn = document.getElementById('save-btn');
-            saveBtn.disabled = true;
-            saveBtn.textContent = 'Saving...';
+            setButtonLoading(saveBtn, true, 'Saving...');
 
             try {
                 const updated = await apiFetch(`/manager/${employeeIdentifier}/summary`, {
@@ -208,12 +217,12 @@
 
                 document.getElementById('summary-edit').classList.add('hidden');
                 document.getElementById('summary-view').classList.remove('hidden');
+                Toast.success('Summary saved!');
 
             } catch (error) {
-                alert(error.message);
+                Toast.error(error.message);
             } finally {
-                saveBtn.disabled = false;
-                saveBtn.textContent = 'Save Changes';
+                setButtonLoading(saveBtn, false);
             }
         });
 
@@ -224,8 +233,7 @@
             }
 
             const btn = document.getElementById('regenerate-btn');
-            btn.disabled = true;
-            btn.textContent = 'Generating...';
+            setButtonLoading(btn, true, 'Generating...');
 
             try {
                 const updated = await apiFetch(`/manager/${employeeIdentifier}/regenerate`, {
@@ -236,12 +244,12 @@
                 document.getElementById('summary-content').innerHTML = markdownToHtml(updated.content);
                 document.getElementById('weighting-explanation').textContent = updated.weighting_explanation || '';
                 document.getElementById('edit-area').value = updated.content;
+                Toast.success('Summary regenerated!');
 
             } catch (error) {
-                alert(error.message);
+                Toast.error(error.message);
             } finally {
-                btn.disabled = false;
-                btn.textContent = 'Regenerate Summary';
+                setButtonLoading(btn, false);
             }
         });
 
@@ -253,8 +261,7 @@
             }
 
             const btn = document.getElementById('finalise-btn');
-            btn.disabled = true;
-            btn.textContent = 'Finalising...';
+            setButtonLoading(btn, true, 'Finalising...');
 
             try {
                 const updated = await apiFetch(`/manager/${employeeIdentifier}/finalise`, {
@@ -266,19 +273,18 @@
 
                 document.getElementById('finalised-banner').classList.remove('hidden');
                 document.getElementById('view-actions').classList.add('hidden');
+                Toast.success('Summary finalised!');
 
             } catch (error) {
-                alert(error.message);
-                btn.disabled = false;
-                btn.textContent = 'Finalise Summary';
+                Toast.error(error.message);
+                setButtonLoading(btn, false);
             }
         });
 
         // Generate (first time)
         document.getElementById('generate-btn').addEventListener('click', async () => {
             const btn = document.getElementById('generate-btn');
-            btn.disabled = true;
-            btn.textContent = 'Generating...';
+            setButtonLoading(btn, true, 'Generating...');
 
             try {
                 const updated = await apiFetch(`/manager/${employeeIdentifier}/generate`, {
@@ -291,11 +297,11 @@
                 document.getElementById('summary-content').innerHTML = markdownToHtml(updated.content);
                 document.getElementById('weighting-explanation').textContent = updated.weighting_explanation || '';
                 document.getElementById('edit-area').value = updated.content;
+                Toast.success('Summary generated!');
 
             } catch (error) {
-                alert(error.message);
-                btn.disabled = false;
-                btn.textContent = 'Generate Summary';
+                Toast.error(error.message);
+                setButtonLoading(btn, false);
             }
         });
 

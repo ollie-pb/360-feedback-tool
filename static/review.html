@@ -7,22 +7,23 @@
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-    <nav>
-        <a href="/">← Back to Home</a>
-    </nav>
+    <div class="container">
+        <header class="site-header site-header--minimal">
+            <span class="header-brand">360 Feedback</span>
+        </header>
 
-    <div class="container" id="loading">
-        <div class="loading">Loading review details...</div>
-    </div>
+        <div id="loading">
+            <div class="loading">Loading review details...</div>
+        </div>
 
-    <div class="container hidden" id="already-submitted">
-        <h1>Feedback Already Submitted</h1>
-        <p>You have already submitted feedback for this review request. Thank you for your participation!</p>
-        <a href="/"><button>Back to Home</button></a>
-    </div>
+        <div class="hidden" id="already-submitted">
+            <h1>Feedback Already Submitted</h1>
+            <p>You have already submitted feedback for this review request. Thank you for your participation!</p>
+            <a href="/"><button>Back to Home</button></a>
+        </div>
 
-    <div class="container hidden" id="review-form-container">
-        <h1>360 Feedback</h1>
+        <div class="hidden" id="review-form-container">
+            <h1>360 Feedback</h1>
         <p>You're providing feedback for <strong id="employee-name"></strong></p>
         <p class="message info">Your relationship: <strong id="relationship"></strong></p>
 
@@ -58,23 +59,24 @@
             </div>
 
             <button type="submit" id="submit-btn">Submit Feedback</button>
-        </form>
-    </div>
-
-    <div class="container hidden" id="success-container">
-        <div class="message success">
-            <strong>Thank you!</strong> Your feedback has been submitted successfully.
+            </form>
         </div>
-        <h1>Feedback Submitted</h1>
-        <p>Your feedback for <strong id="success-employee-name"></strong> has been recorded.</p>
-        <p>Your input will help create a comprehensive performance summary.</p>
-        <a href="/"><button>Back to Home</button></a>
-    </div>
 
-    <div class="container hidden" id="error-container">
-        <h1>Invalid Link</h1>
-        <p>This review link is invalid or has expired. Please check you have the correct URL.</p>
-        <a href="/"><button>Back to Home</button></a>
+        <div class="hidden" id="success-container">
+            <div class="message success">
+                <strong>Thank you!</strong> Your feedback has been submitted successfully.
+            </div>
+            <h1>Feedback Submitted</h1>
+            <p>Your feedback for <strong id="success-employee-name"></strong> has been recorded.</p>
+            <p>Your input will help create a comprehensive performance summary.</p>
+            <a href="/"><button>Back to Home</button></a>
+        </div>
+
+        <div class="hidden" id="error-container">
+            <h1>Invalid Link</h1>
+            <p>This review link is invalid or has expired. Please check you have the correct URL.</p>
+            <a href="/"><button>Back to Home</button></a>
+        </div>
     </div>
 
     <script src="/static/js/app.js"></script>
@@ -111,8 +113,7 @@
             e.preventDefault();
 
             const submitBtn = document.getElementById('submit-btn');
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Submitting...';
+            setButtonLoading(submitBtn, true, 'Submitting...');
 
             try {
                 await apiFetch(`/review/${token}`, {
@@ -131,11 +132,11 @@
 
                 formContainer.classList.add('hidden');
                 successContainer.classList.remove('hidden');
+                Toast.success('Feedback submitted successfully!');
 
             } catch (error) {
-                showMessage(formContainer, error.message, 'error');
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Submit Feedback';
+                Toast.error(error.message);
+                setButtonLoading(submitBtn, false);
             }
         });
 

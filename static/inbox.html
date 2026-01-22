@@ -7,11 +7,11 @@
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-    <nav>
-        <a href="/">← Back to Home</a>
-    </nav>
-
     <div class="container">
+        <header class="site-header site-header--minimal">
+            <a href="/" class="header-brand">360 Feedback</a>
+        </header>
+
         <h1>Your Review Inbox</h1>
         <p id="inbox-email"></p>
 
@@ -20,8 +20,9 @@
         <div id="inbox-list" class="hidden"></div>
 
         <div id="empty-state" class="hidden">
-            <div class="message info">
-                No feedback requests found for this email address.
+            <div class="empty-state">
+                <p class="empty-state-title">No feedback requests found</p>
+                <p class="empty-state-description">There are no pending reviews for this email address.</p>
             </div>
         </div>
     </div>
