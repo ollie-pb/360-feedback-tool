@@ -27,6 +27,14 @@
         <p>You're providing feedback for <strong id="employee-name"></strong></p>
         <p class="message info">Your relationship: <strong id="relationship"></strong></p>
 
+        <div class="voice-feedback">
+            <button id="voice-btn" type="button" onclick="toggleRecording()">
+                <span class="default-state">🎙️ Record voice feedback</span>
+                <span class="recording-state hidden">⏹️ Stop recording</span>
+            </button>
+            <span id="recording-indicator" class="hidden">● Recording...</span>
+        </div>
+
         <form id="review-form">
             <div class="form-group">
                 <label for="start-doing">What should this person START doing?</label>
@@ -87,6 +95,117 @@
         const alreadySubmittedEl = document.getElementById('already-submitted');
         const successContainer = document.getElementById('success-container');
         const errorContainer = document.getElementById('error-container');
+
+        // Voice recording state
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let isRecording = false;
+
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = e => {
+                    if (e.data.size > 0) audioChunks.push(e.data);
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                showRecordingState(true);
+
+                // Auto-stop after 5 minutes
+                setTimeout(() => {
+                    if (isRecording) {
+                        processVoiceFeedback();
+                    }
+                }, 5 * 60 * 1000);
+            } catch (error) {
+                if (error.name === 'NotAllowedError') {
+                    Toast.error('Microphone access denied. Please enable in browser settings.');
+                } else {
+                    Toast.error('Could not access microphone. Please try again.');
+                }
+            }
+        }
+
+        function stopRecording() {
+            return new Promise(resolve => {
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(audioChunks, { type: 'audio/webm' });
+                    mediaRecorder.stream.getTracks().forEach(t => t.stop());
+                    resolve(blob);
+                };
+                mediaRecorder.stop();
+            });
+        }
+
+        async function processVoiceFeedback() {
+            if (!isRecording) return;
+
+            isRecording = false;
+            showRecordingState(false);
+
+            const voiceBtn = document.getElementById('voice-btn');
+            setButtonLoading(voiceBtn, true, 'Processing...');
+
+            try {
+                const blob = await stopRecording();
+                const formData = new FormData();
+                formData.append('audio_file', blob, 'feedback.webm');
+
+                const response = await fetch(`/api/review/${token}/voice-transcribe`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Processing failed');
+                }
+
+                const fields = await response.json();
+
+                // Populate form fields
+                document.getElementById('start-doing').value = fields.start_doing || '';
+                document.getElementById('stop-doing').value = fields.stop_doing || '';
+                document.getElementById('continue-doing').value = fields.continue_doing || '';
+                document.getElementById('example').value = fields.example || '';
+                document.getElementById('additional').value = fields.additional || '';
+
+                Toast.success('Voice feedback processed! Review and edit below.');
+            } catch (error) {
+                Toast.error(error.message || 'Processing failed. Please try again or type your feedback.');
+            } finally {
+                setButtonLoading(voiceBtn, false);
+            }
+        }
+
+        function toggleRecording() {
+            if (isRecording) {
+                processVoiceFeedback();
+            } else {
+                startRecording();
+            }
+        }
+
+        function showRecordingState(recording) {
+            const voiceBtn = document.getElementById('voice-btn');
+            const indicator = document.getElementById('recording-indicator');
+            const defaultState = voiceBtn.querySelector('.default-state');
+            const recordingState = voiceBtn.querySelector('.recording-state');
+
+            if (recording) {
+                defaultState.classList.add('hidden');
+                recordingState.classList.remove('hidden');
+                indicator.classList.remove('hidden');
+            } else {
+                defaultState.classList.remove('hidden');
+                recordingState.classList.add('hidden');
+                indicator.classList.add('hidden');
+            }
+        }
 
         async function loadReviewContext() {
             try {
