@@ -3,6 +3,8 @@ import io
 import json
 import os
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, File
+from openai import OpenAI
+from anthropic import Anthropic
 
 from app.database import get_db
 from app.models import ReviewContext, ReviewSubmit, ReviewResponse
@@ -123,10 +125,6 @@ async def transcribe_voice_feedback(
     db=Depends(get_db)
 ):
     """Transcribe and structure voice feedback using Whisper and Claude."""
-    # Lazy imports for serverless cold start optimization
-    from openai import OpenAI
-    from anthropic import Anthropic
-
     cur = db.cursor()
 
     # Validate token exists and review not already submitted
