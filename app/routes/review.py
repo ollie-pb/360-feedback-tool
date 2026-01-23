@@ -4,7 +4,6 @@ import json
 import os
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, File
 import httpx
-from anthropic import Anthropic
 
 from app.database import get_db
 from app.models import ReviewContext, ReviewSubmit, ReviewResponse
@@ -199,6 +198,7 @@ async def transcribe_voice_feedback(
         )
 
     # Structure with Claude Haiku
+    from anthropic import Anthropic
     anthropic_client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
     try:
