@@ -10,6 +10,27 @@ AI-powered 360-degree feedback collection and summarization. Streamlines feedbac
 - **Manager Dashboard** - Progress tracking, summary editing, and finalization
 - **Token-Based Access** - Frictionless reviewer experience (no login required)
 
+## What's Included
+
+### Built (MVP Scope)
+- ✅ **Feedback Collection** - Token-based review forms with start/stop/continue framework
+- ✅ **Voice Recording** - Per-field voice input with Whisper transcription + Claude extraction
+- ✅ **Weighted Summarization** - AI-generated summaries with relationship/frequency weighting
+- ✅ **Manager Dashboard** - Progress tracking, summary editing, finalization workflow
+- ✅ **Reviewer Inbox** - Centralized view of all pending reviews by email
+- ✅ **Auto-regeneration** - Summaries auto-update when new reviews are submitted
+
+### Explicitly Descoped
+- ❌ **Authentication** - No login system (token-based access only)
+- ❌ **Email Notifications** - Review links shared manually, no automated reminders
+- ❌ **Multi-cycle Management** - One feedback cycle per employee (no historical tracking)
+- ❌ **Advanced Analytics** - No reporting, trends, or comparative analysis
+- ❌ **Customizable Fields** - Fixed to start/stop/continue framework
+- ❌ **PDF Export** - Summaries viewable in-app only
+- ❌ **Mobile Optimization** - Desktop-focused responsive design
+
+**Rationale**: MVP focused on core workflow (collect → weight → summarize → finalize) with 6-hour timebox. Authentication, notifications, and analytics are standard features but add significant complexity for marginal MVP value.
+
 ## Tech Stack
 
 - **Backend**: FastAPI (Python), PostgreSQL
@@ -77,6 +98,128 @@ Visit `http://localhost:8000` and explore the API docs at `/docs`.
 - Reviews AI-generated summary
 - Edits if needed
 - Finalizes for delivery
+
+## How Summarization Works
+
+The tool uses a two-stage AI pipeline for intelligent feedback synthesis:
+
+### Stage 1: Voice Transcription (Per-Field)
+
+**Process**: OpenAI Whisper → Claude Haiku extraction
+
+When reviewers record voice feedback, each field is processed independently:
+
+1. **Transcription** - Whisper converts audio to raw text (~5 seconds)
+2. **Extraction** - Claude Haiku structures the transcript into professional feedback
+
+**Example Extraction Prompt** (Start Doing field):
+```
+Transform this voice feedback into a constructive "Start Doing" recommendation.
+
+Example input: "I think she could really benefit from speaking up more in
+client meetings. She clearly has good ideas because I see them in her written
+work, but she tends to stay quiet when the clients are in the room."
+
+Example output: "Consider taking a more active voice in client meetings. Your
+ideas come through strongly in written deliverables, and sharing them directly
+during discussions would increase your visibility with clients."
+
+Guidelines:
+- Write 2-4 sentences that capture the full substance
+- Frame recommendations around observable behaviors, not personality traits
+- Include reasoning or potential impact if mentioned
+- Use professional, encouraging language
+- Preserve specific details and contexts
+
+Transcript: "{user's spoken feedback}"
+```
+
+**Key Design Choice**: Per-field recording (not one long recording) reduces cognitive load and makes editing easier. Each field gets a focused prompt tuned for that feedback type.
+
+### Stage 2: Weighted Summarization
+
+**Process**: Claude Sonnet synthesizes all reviews with weighting context
+
+**Weighting Formula**:
+```
+combined_weight = relationship_weight × frequency_weight
+
+Relationship Weights:
+- Manager:          1.0
+- Peer:             0.8
+- Direct Report:    0.7
+- Cross-functional: 0.6
+
+Frequency Weights:
+- Weekly:   1.0
+- Monthly:  0.7
+- Rarely:   0.4
+
+Examples:
+- Manager, Weekly:           1.0 × 1.0 = 1.00 (highest influence)
+- Peer, Monthly:             0.8 × 0.7 = 0.56
+- Direct Report, Rarely:     0.7 × 0.4 = 0.28 (lowest influence)
+```
+
+**Summarization Prompt** (Claude Sonnet 4):
+```
+You are summarising 360-degree feedback for an employee performance review.
+
+## Employee
+Alex Chen
+
+## Feedback Submissions
+
+### Reviewer: Riley Martinez (Manager, works together weekly)
+**Weight**: 1.00 (based on relationship and collaboration frequency)
+
+**Start doing**: Consider delegating more code reviews to senior engineers...
+**Stop doing**: Reduce frequency of late-night work sessions...
+**Continue doing**: Your detailed technical documentation is excellent...
+**Example**: During the Q3 planning meeting, they proactively identified...
+**Additional**: Generally strong technical leadership...
+
+---
+
+### Reviewer: Jordan Park (Peer, works together weekly)
+**Weight**: 0.80
+
+[... similar structure for other reviewers ...]
+
+## Instructions
+Synthesise this feedback into a summary with these sections:
+1. **Strengths** - What this person does well (weight higher-confidence
+   feedback more heavily)
+2. **Growth Areas** - Where they can improve
+3. **Key Examples** - Specific behaviours observed (quote or paraphrase)
+4. **Suggested Focus** - 1-2 priority areas for development
+
+Weight feedback from managers and frequent collaborators more heavily than
+occasional cross-functional contacts.
+
+Keep the tone constructive and actionable. Be concise. Use markdown formatting.
+```
+
+**Model Configuration**:
+- Model: `claude-sonnet-4-20250514` (balance of quality and speed)
+- Max tokens: `2048` (room for detailed summaries)
+- Temperature: `0.3` (consistent, professional output)
+
+**Generated Weighting Explanation** (shown to managers):
+> "This summary weights feedback based on reviewer relationship (manager feedback
+> weighted highest) and collaboration frequency (weekly interactions weighted
+> highest). Riley Martinez's feedback as a manager with weekly interaction
+> carried the most weight."
+
+### Why This Approach Works
+
+**Transparency**: Weights are mathematically calculated and explained to managers, not hidden in a black box.
+
+**Fairness**: Prevents gaming (e.g., nominating 5 junior reports to dilute critical peer feedback). Manager input always carries appropriate influence.
+
+**Quality**: Two-stage processing (transcription → extraction, then weighted synthesis) produces more accurate results than single-pass summarization.
+
+**Editability**: Managers can review, edit, and finalize summaries. AI does 90% of the synthesis work, humans retain control.
 
 ## Architecture
 
