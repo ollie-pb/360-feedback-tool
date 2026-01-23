@@ -3,7 +3,6 @@ import io
 import json
 import os
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, File
-import httpx
 
 from app.database import get_db
 from app.models import ReviewContext, ReviewSubmit, ReviewResponse
@@ -156,6 +155,8 @@ async def transcribe_voice_feedback(
     audio_buffer.name = audio_file.filename or "recording.webm"
 
     # Transcribe with Whisper API (direct HTTP call - Vercel compatible)
+    import httpx
+
     openai_api_key = os.environ.get("OPENAI_API_KEY")
     if not openai_api_key:
         raise HTTPException(status_code=500, detail="OpenAI API key not configured")
