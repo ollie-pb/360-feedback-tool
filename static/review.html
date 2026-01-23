@@ -27,41 +27,73 @@
         <p>You're providing feedback for <strong id="employee-name"></strong></p>
         <p class="message info">Your relationship: <strong id="relationship"></strong></p>
 
-        <div class="voice-feedback">
-            <button id="voice-btn" type="button" onclick="toggleRecording()">
-                <span class="default-state">🎙️ Record voice feedback</span>
-                <span class="recording-state hidden">⏹️ Stop recording</span>
-            </button>
-            <span id="recording-indicator" class="hidden">● Recording...</span>
-        </div>
-
         <form id="review-form">
             <div class="form-group">
-                <label for="start-doing">What should this person START doing?</label>
+                <label>
+                    What should this person START doing?
+                    <button type="button" class="field-mic-btn" data-field="start_doing"
+                            onclick="toggleFieldRecording('start_doing')"
+                            aria-label="Record feedback for start doing">
+                        <span class="mic-icon">🎙️</span>
+                        <span class="recording-spinner hidden">⏺</span>
+                    </button>
+                </label>
                 <textarea id="start-doing" required maxlength="2000"
                     placeholder="Example: 'Start delegating more technical decisions to senior team members to free up time for strategic planning.'"></textarea>
             </div>
 
             <div class="form-group">
-                <label for="stop-doing">What should this person STOP doing?</label>
+                <label>
+                    What should this person STOP doing?
+                    <button type="button" class="field-mic-btn" data-field="stop_doing"
+                            onclick="toggleFieldRecording('stop_doing')"
+                            aria-label="Record feedback for stop doing">
+                        <span class="mic-icon">🎙️</span>
+                        <span class="recording-spinner hidden">⏺</span>
+                    </button>
+                </label>
                 <textarea id="stop-doing" required maxlength="2000"
                     placeholder="Example: 'Stop taking on too many commitments at once. This leads to rushed work and missed deadlines.'"></textarea>
             </div>
 
             <div class="form-group">
-                <label for="continue-doing">What should this person CONTINUE doing?</label>
+                <label>
+                    What should this person CONTINUE doing?
+                    <button type="button" class="field-mic-btn" data-field="continue_doing"
+                            onclick="toggleFieldRecording('continue_doing')"
+                            aria-label="Record feedback for continue doing">
+                        <span class="mic-icon">🎙️</span>
+                        <span class="recording-spinner hidden">⏺</span>
+                    </button>
+                </label>
                 <textarea id="continue-doing" required maxlength="2000"
                     placeholder="Example: 'Continue hosting weekly team syncs. They keep everyone aligned and create space for questions.'"></textarea>
             </div>
 
             <div class="form-group">
-                <label for="example">Describe a specific moment you observed this person demonstrating a strength or area for growth *</label>
+                <label>
+                    Describe a specific moment you observed this person demonstrating a strength or area for growth *
+                    <button type="button" class="field-mic-btn" data-field="example"
+                            onclick="toggleFieldRecording('example')"
+                            aria-label="Record example">
+                        <span class="mic-icon">🎙️</span>
+                        <span class="recording-spinner hidden">⏺</span>
+                    </button>
+                </label>
                 <textarea id="example" required maxlength="2000"
                     placeholder="Example: 'During the Q3 planning meeting, they mediated a disagreement between two teams by listening to both sides and proposing a compromise that addressed both concerns. This unblocked a two-week stalemate.'"></textarea>
             </div>
 
             <div class="form-group">
-                <label for="additional">Additional comments (optional)</label>
+                <label>
+                    Additional comments (optional)
+                    <button type="button" class="field-mic-btn" data-field="additional"
+                            onclick="toggleFieldRecording('additional')"
+                            aria-label="Record additional comments">
+                        <span class="mic-icon">🎙️</span>
+                        <span class="recording-spinner hidden">⏺</span>
+                    </button>
+                </label>
                 <textarea id="additional" maxlength="2000"
                     placeholder="Any other observations, context, or feedback that doesn't fit the categories above..."></textarea>
             </div>
@@ -96,64 +128,73 @@
         const successContainer = document.getElementById('success-container');
         const errorContainer = document.getElementById('error-container');
 
-        // Voice recording state
-        let mediaRecorder = null;
-        let audioChunks = [];
-        let isRecording = false;
+        // Per-field recording state
+        const fieldRecorders = {
+            currentField: null,      // "start_doing" | "stop_doing" | etc. | null
+            mediaRecorder: null,
+            audioChunks: [],
+            isRecording: false
+        };
 
-        async function startRecording() {
+        async function startRecording(fieldName) {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
-                audioChunks = [];
+                fieldRecorders.mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: 'audio/webm;codecs=opus'
+                });
+                fieldRecorders.audioChunks = [];
+                fieldRecorders.currentField = fieldName;
 
-                mediaRecorder.ondataavailable = e => {
-                    if (e.data.size > 0) audioChunks.push(e.data);
+                fieldRecorders.mediaRecorder.ondataavailable = e => {
+                    if (e.data.size > 0) fieldRecorders.audioChunks.push(e.data);
                 };
 
-                mediaRecorder.start();
-                isRecording = true;
-                showRecordingState(true);
+                fieldRecorders.mediaRecorder.start();
+                fieldRecorders.isRecording = true;
+                updateMicButtonStates(fieldName, 'recording');
 
-                // Auto-stop after 5 minutes
+                // Auto-stop after 2 minutes (shorter per-field timeout)
                 setTimeout(() => {
-                    if (isRecording) {
-                        processVoiceFeedback();
+                    if (fieldRecorders.isRecording && fieldRecorders.currentField === fieldName) {
+                        processFieldVoiceFeedback(fieldName);
                     }
-                }, 5 * 60 * 1000);
+                }, 2 * 60 * 1000);
+
             } catch (error) {
                 if (error.name === 'NotAllowedError') {
                     Toast.error('Microphone access denied. Please enable in browser settings.');
                 } else {
                     Toast.error('Could not access microphone. Please try again.');
                 }
+                updateMicButtonStates(null, 'idle');
             }
         }
 
         function stopRecording() {
             return new Promise(resolve => {
-                mediaRecorder.onstop = () => {
-                    const blob = new Blob(audioChunks, { type: 'audio/webm' });
-                    mediaRecorder.stream.getTracks().forEach(t => t.stop());
+                fieldRecorders.mediaRecorder.onstop = () => {
+                    const blob = new Blob(fieldRecorders.audioChunks, { type: 'audio/webm' });
+                    fieldRecorders.mediaRecorder.stream.getTracks().forEach(t => t.stop());
                     resolve(blob);
                 };
-                mediaRecorder.stop();
+                fieldRecorders.mediaRecorder.stop();
             });
         }
 
-        async function processVoiceFeedback() {
-            if (!isRecording) return;
+        async function processFieldVoiceFeedback(fieldName) {
+            if (!fieldRecorders.isRecording) return;
 
-            isRecording = false;
-            showRecordingState(false);
-
-            const voiceBtn = document.getElementById('voice-btn');
-            setButtonLoading(voiceBtn, true, 'Processing...');
+            fieldRecorders.isRecording = false;
+            updateMicButtonStates(fieldName, 'processing');
 
             try {
+                // Stop recording and get audio blob
                 const blob = await stopRecording();
+
+                // Upload and transcribe
                 const formData = new FormData();
                 formData.append('audio_file', blob, 'feedback.webm');
+                formData.append('field_name', fieldName);  // NEW: Include field name
 
                 const response = await fetch(`/api/review/${token}/voice-transcribe`, {
                     method: 'POST',
@@ -165,46 +206,81 @@
                     throw new Error(error.detail || 'Processing failed');
                 }
 
-                const fields = await response.json();
+                const data = await response.json();
 
-                // Populate form fields
-                document.getElementById('start-doing').value = fields.start_doing || '';
-                document.getElementById('stop-doing').value = fields.stop_doing || '';
-                document.getElementById('continue-doing').value = fields.continue_doing || '';
-                document.getElementById('example').value = fields.example || '';
-                document.getElementById('additional').value = fields.additional || '';
+                // Populate the specific field
+                const fieldId = fieldName.replace('_', '-');  // Convert snake_case to kebab-case
+                document.getElementById(fieldId).value = data.field_value || '';
 
-                Toast.success('Voice feedback processed! Review and edit below.');
+                Toast.success(`${getFieldLabel(fieldName)} updated! Review and edit if needed.`);
+
             } catch (error) {
-                Toast.error(error.message || 'Processing failed. Please try again or type your feedback.');
+                Toast.error(`Failed to process recording: ${error.message}`);
             } finally {
-                setButtonLoading(voiceBtn, false);
+                fieldRecorders.currentField = null;
+                updateMicButtonStates(null, 'idle');
             }
         }
 
-        function toggleRecording() {
-            if (isRecording) {
-                processVoiceFeedback();
+        function toggleFieldRecording(fieldName) {
+            if (fieldRecorders.isRecording) {
+                if (fieldRecorders.currentField === fieldName) {
+                    // Stop recording for this field
+                    processFieldVoiceFeedback(fieldName);
+                } else {
+                    // Prevent recording different field while one is active
+                    Toast.error('Please finish the current recording first.');
+                }
             } else {
-                startRecording();
+                // Start recording for this field
+                startRecording(fieldName);
             }
         }
 
-        function showRecordingState(recording) {
-            const voiceBtn = document.getElementById('voice-btn');
-            const indicator = document.getElementById('recording-indicator');
-            const defaultState = voiceBtn.querySelector('.default-state');
-            const recordingState = voiceBtn.querySelector('.recording-state');
+        function updateMicButtonStates(activeField, state) {
+            // state: 'idle' | 'recording' | 'processing'
+            const allButtons = document.querySelectorAll('.field-mic-btn');
 
-            if (recording) {
-                defaultState.classList.add('hidden');
-                recordingState.classList.remove('hidden');
-                indicator.classList.remove('hidden');
-            } else {
-                defaultState.classList.remove('hidden');
-                recordingState.classList.add('hidden');
-                indicator.classList.add('hidden');
-            }
+            allButtons.forEach(btn => {
+                const fieldName = btn.getAttribute('data-field');
+                const micIcon = btn.querySelector('.mic-icon');
+                const spinner = btn.querySelector('.recording-spinner');
+
+                if (fieldName === activeField) {
+                    // Active button
+                    if (state === 'recording') {
+                        btn.classList.add('recording');
+                        btn.classList.remove('processing');
+                        micIcon.classList.remove('hidden');
+                        spinner.classList.add('hidden');
+                        btn.setAttribute('aria-pressed', 'true');
+                    } else if (state === 'processing') {
+                        btn.classList.remove('recording');
+                        btn.classList.add('processing');
+                        micIcon.classList.add('hidden');
+                        spinner.classList.remove('hidden');
+                        btn.disabled = true;
+                    }
+                } else {
+                    // Inactive buttons
+                    btn.classList.remove('recording', 'processing');
+                    micIcon.classList.remove('hidden');
+                    spinner.classList.add('hidden');
+                    btn.disabled = (state !== 'idle');
+                    btn.setAttribute('aria-pressed', 'false');
+                }
+            });
+        }
+
+        function getFieldLabel(fieldName) {
+            const labels = {
+                'start_doing': 'Start doing',
+                'stop_doing': 'Stop doing',
+                'continue_doing': 'Continue doing',
+                'example': 'Example',
+                'additional': 'Additional comments'
+            };
+            return labels[fieldName] || fieldName;
         }
 
         async function loadReviewContext() {

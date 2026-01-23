@@ -2,7 +2,7 @@
 import io
 import json
 import os
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, File, Form
 
 from app.database import get_db
 from app.models import ReviewContext, ReviewSubmit, ReviewResponse
@@ -10,7 +10,50 @@ from app.services.summarisation import regenerate_summary_for_cycle
 
 router = APIRouter()
 
-# Extraction prompt for structuring voice transcripts
+# Field-specific extraction prompts
+FIELD_EXTRACTION_PROMPTS = {
+    "start_doing": """Extract what the person should START doing from this feedback.
+
+Transcript: "{transcript}"
+
+Return only the relevant content about what they should begin doing.
+If nothing is mentioned, return empty string.
+Return plain text only, no JSON.""",
+
+    "stop_doing": """Extract what the person should STOP doing from this feedback.
+
+Transcript: "{transcript}"
+
+Return only the relevant content about what they should stop doing.
+If nothing is mentioned, return empty string.
+Return plain text only, no JSON.""",
+
+    "continue_doing": """Extract what the person should CONTINUE doing from this feedback.
+
+Transcript: "{transcript}"
+
+Return only the relevant content about what they should keep doing.
+If nothing is mentioned, return empty string.
+Return plain text only, no JSON.""",
+
+    "example": """Extract a specific example or story from this feedback.
+
+Transcript: "{transcript}"
+
+Return only the specific example, observation, or story mentioned.
+If nothing is mentioned, return empty string.
+Return plain text only, no JSON.""",
+
+    "additional": """Extract any additional comments from this feedback.
+
+Transcript: "{transcript}"
+
+Return only additional observations or context.
+If nothing is mentioned, return empty string.
+Return plain text only, no JSON."""
+}
+
+# Keep original prompt for backwards compatibility
 EXTRACTION_PROMPT = """Extract structured 360-degree feedback from this voice transcript.
 
 Transcript:
@@ -120,6 +163,7 @@ def submit_review(
 async def transcribe_voice_feedback(
     token: str,
     audio_file: UploadFile = File(...),
+    field_name: str = Form(None),
     db=Depends(get_db)
 ):
     """Transcribe and structure voice feedback using Whisper and Claude."""
@@ -203,14 +247,28 @@ async def transcribe_voice_feedback(
     anthropic_client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
     try:
-        structured = anthropic_client.messages.create(
-            model="claude-3-haiku-20240307",
-            max_tokens=1024,
-            messages=[{"role": "user", "content": EXTRACTION_PROMPT.format(transcript=transcript)}]
-        )
+        if field_name:
+            # Per-field extraction
+            if field_name not in FIELD_EXTRACTION_PROMPTS:
+                raise HTTPException(status_code=400, detail=f"Invalid field name: {field_name}")
 
-        fields = json.loads(structured.content[0].text)
+            prompt = FIELD_EXTRACTION_PROMPTS[field_name].format(transcript=transcript)
+            structured = anthropic_client.messages.create(
+                model="claude-3-haiku-20240307",
+                max_tokens=512,  # Shorter for single field
+                messages=[{"role": "user", "content": prompt}]
+            )
+            field_value = structured.content[0].text.strip()
+            return {"field_value": field_value}
+        else:
+            # Legacy: Extract all fields (backwards compatible)
+            structured = anthropic_client.messages.create(
+                model="claude-3-haiku-20240307",
+                max_tokens=1024,
+                messages=[{"role": "user", "content": EXTRACTION_PROMPT.format(transcript=transcript)}]
+            )
+            fields = json.loads(structured.content[0].text)
+            return fields
+
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Processing failed: {str(e)}")
-
-    return fields
