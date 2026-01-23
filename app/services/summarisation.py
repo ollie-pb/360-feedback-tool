@@ -1,7 +1,6 @@
 """AI summarisation service using Claude API."""
 import logging
 import os
-from anthropic import Anthropic
 
 logger = logging.getLogger(__name__)
 
@@ -106,6 +105,7 @@ Keep the tone constructive and actionable. Be concise. Use markdown formatting.
 """
 
     # Call Claude API
+    from anthropic import Anthropic
     client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
     message = client.messages.create(
