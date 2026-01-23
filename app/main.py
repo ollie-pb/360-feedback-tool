@@ -1,6 +1,10 @@
 """FastAPI application entry point."""
-from dotenv import load_dotenv
-load_dotenv()  # Load .env before any other imports that might use env vars
+import os
+
+# Load .env only for local development
+if os.environ.get("VERCEL") != "1":
+    from dotenv import load_dotenv
+    load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
