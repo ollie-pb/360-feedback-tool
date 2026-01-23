@@ -69,6 +69,34 @@ uvicorn app.main:app --reload
 
 Visit `http://localhost:8000` and explore the API docs at `/docs`.
 
+## Demo Data
+
+The database comes pre-seeded with demo accounts for testing:
+
+**Demo Employee**: Alex Chen
+**Demo Cycle**: Q4 2024 Review (cycle ID: 1)
+
+**Demo Reviewers** (with tokens):
+- Sam Taylor (Manager, Weekly) - `demo-sam-token-abc123`
+- Jordan Lee (Peer, Weekly) - `demo-jordan-token-def456`
+- Casey Morgan (Direct Report, Monthly) - `demo-casey-token-ghi789`
+- Riley Kumar (Cross-functional, Rarely) - `demo-riley-token-jkl012`
+
+**Quick Links**:
+- Review form: `/review/{token}` (e.g., `/review/demo-sam-token-abc123`)
+- Manager dashboard: `/manager/1`
+- Reviewer inbox: `/inbox/sam@demo.360feedback`
+
+### Resetting Demo Data
+
+To clear all demo reviews and summaries (useful for testing/demos):
+
+```bash
+python scripts/reset_demo_data.py
+```
+
+This deletes reviews and summaries while preserving users, cycles, and tokens. All demo tokens remain valid and can be reused immediately.
+
 ## How It Works
 
 ### 1. Employee Creates Cycle
