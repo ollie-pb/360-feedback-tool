@@ -1,6 +1,10 @@
 """FastAPI application entry point."""
-from dotenv import load_dotenv
-load_dotenv()  # Load .env before any other imports that might use env vars
+import os
+
+# Load .env only for local development
+if os.environ.get("VERCEL") != "1":
+    from dotenv import load_dotenv
+    load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -41,7 +45,6 @@ app.mount("/static", StaticFiles(directory=static_dir), name="static")
 @app.on_event("startup")
 def startup():
     """Initialize and seed database on startup (local development only)."""
-    import os
     # Skip database initialization on Vercel serverless
     if os.environ.get("VERCEL") != "1":
         init_db()
