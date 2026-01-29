@@ -83,6 +83,17 @@ def reset_demo_data():
         )
         print(f"✓ Deleted {summary_count} summaries")
 
+    # Fix manager_user_id on demo cycles if not set
+    # (ensures Sam Taylor is set as manager for Alex Chen's cycle)
+    cur.execute("""
+        UPDATE feedback_cycles fc
+        SET manager_user_id = (SELECT id FROM users WHERE email = 'sam@demo.360feedback')
+        WHERE fc.subject_user_id IN (SELECT id FROM users WHERE email = 'alex@demo.360feedback')
+        AND fc.manager_user_id IS NULL
+    """)
+    if cur.rowcount > 0:
+        print(f"✓ Fixed manager_user_id on {cur.rowcount} cycle(s)")
+
     # Commit changes
     conn.commit()
     cur.close()

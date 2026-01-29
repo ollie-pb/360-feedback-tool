@@ -88,6 +88,15 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_summaries_cycle ON summaries(cycle_id);
     """)
 
+    # Migration: Fix manager_user_id on demo cycles where Sam is reviewer with 'manager' relationship
+    # but manager_user_id is not set on the cycle
+    cur.execute("""
+        UPDATE feedback_cycles fc
+        SET manager_user_id = (SELECT id FROM users WHERE email = 'sam@demo.360feedback')
+        WHERE fc.subject_user_id IN (SELECT id FROM users WHERE email = 'alex@demo.360feedback')
+        AND fc.manager_user_id IS NULL
+    """)
+
     conn.commit()
     cur.close()
     conn.close()
@@ -122,11 +131,12 @@ def seed_demo_data():
         )
         user_ids[email] = cur.fetchone()["id"]
 
-    # Create a demo feedback cycle for Alex Chen
+    # Create a demo feedback cycle for Alex Chen (with Sam Taylor as manager)
     alex_id = user_ids["alex@demo.360feedback"]
+    sam_id = user_ids["sam@demo.360feedback"]
     cur.execute(
-        "INSERT INTO feedback_cycles (subject_user_id, created_by_user_id, title) VALUES (%s, %s, %s) RETURNING id",
-        (alex_id, alex_id, "Q4 2024 Review")
+        "INSERT INTO feedback_cycles (subject_user_id, created_by_user_id, manager_user_id, title) VALUES (%s, %s, %s, %s) RETURNING id",
+        (alex_id, alex_id, sam_id, "Q4 2024 Review")
     )
     cycle_id = cur.fetchone()["id"]
 
