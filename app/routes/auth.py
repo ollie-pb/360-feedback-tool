@@ -130,3 +130,22 @@ def get_dashboard(email: str, db=Depends(get_db)):
         managed_cycles=managed_cycles,
         pending_reviews=pending_reviews
     )
+
+
+@router.post("/migrate/fix-manager-ids")
+def fix_manager_ids(db=Depends(get_db)):
+    """One-time migration to fix manager_user_id on demo cycles."""
+    cur = db.cursor()
+
+    # Fix manager_user_id on demo cycles where it's not set
+    cur.execute("""
+        UPDATE feedback_cycles fc
+        SET manager_user_id = (SELECT id FROM users WHERE email = 'sam@demo.360feedback')
+        WHERE fc.subject_user_id IN (SELECT id FROM users WHERE email = 'alex@demo.360feedback')
+        AND fc.manager_user_id IS NULL
+    """)
+    updated = cur.rowcount
+
+    db.commit()
+
+    return {"message": f"Fixed {updated} cycle(s)", "updated": updated}
